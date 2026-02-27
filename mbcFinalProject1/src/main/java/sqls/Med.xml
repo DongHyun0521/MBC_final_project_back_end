@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.fin1.dao.MedDao">
+
+	<!-- 의료진 회원 가입 -->
+    <insert id="addMedStaff" parameterType="com.mbc.fin1.dto.MedStaffDto">
+        INSERT INTO med_staff (mem_id, role, license_number, status, med_dept_id, spot_id) 
+        VALUES (#{memId}, #{role}, #{licenseNumber}, #{status}, #{medDeptId}, #{spotId})
+    </insert>
+    
+    <!-- 의사인지 확인 -->
+    <select id="checkDoctorCount" parameterType="long" resultType="int">
+        SELECT COUNT(*) FROM med_staff 
+        WHERE mem_id = #{memId} 
+			AND (role = 'DOCTOR' OR role = '의사') 
+			AND status = '재직'
+    </select>
+	
+	<!-- ========== 진료 예약 ========== -->
+
+	<!-- 예약하기 -->
+    <insert id="createReservation" parameterType="com.mbc.fin1.dto.ReservationDto">
+        INSERT INTO reservation (
+            mem_id, med_dept_id, doctor_id, reservation_date, reservation_time, 
+            reservation_type, visit_type, reservation_status, reservation_memo
+        ) VALUES (
+            #{memId}, #{medDeptId}, #{doctorId}, #{reservationDate}, #{reservationTime}, 
+            #{reservationType}, #{visitType}, #{reservationStatus}, #{reservationMemo}
+        )
+    </insert>
+    
+    <!-- 회원이 예약 취소하기 (예약->취소) -->
+    <update id="cancelReservation" parameterType="long">
+        UPDATE reservation 
+	    SET reservation_status = '취소' 
+	    WHERE reservation_id = #{reservationId} AND mem_id = #{memId}
+    </update>
+    
+    <!-- 해당 의사인지 확인 -->
+    <select id="getMedStaffIdByMemId" parameterType="long" resultType="long">
+        SELECT med_staff_id 
+        FROM med_staff 
+        WHERE mem_id = #{memId}
+    </select>
+    
+    <!-- 의사가 예약 강제 취소하기 (예약->취소) -->
+    <update id="cancelReservationByDoctor">
+        UPDATE reservation 
+        SET reservation_status = '취소' 
+        WHERE reservation_id = #{reservationId} 
+          AND doctor_id = #{doctorId}
+    </update>
+    
+    <!-- 의사가 예약 완료하기 (예약->완료) -->
+    <update id="completeReservation">
+		UPDATE reservation 
+        SET reservation_status = '완료' 
+        WHERE reservation_id = #{reservationId} 
+        	AND doctor_id = #{doctorId} 
+        	AND reservation_status = '예약'
+    </update>
+    
+    <!-- 미방문 예약 찾기 (예약시간+30분) -->
+    <select id="findNoShowReservations" resultType="long">
+        SELECT reservation_id
+        FROM reservation
+        WHERE reservation_status = '예약'
+        AND TO_TIMESTAMP(reservation_date || ' ' || CAST(reservation_time AS TIME), 'YYYYMMDD HH24:MI:SS') 
+			&lt; (NOW() - INTERVAL '30 minutes')
+    </select>
+    
+    <!-- 자동으로 예약 미방문으로 바꾸기 (예약->미방문) -->
+    <update id="updateNoShowStatus" parameterType="list">
+        UPDATE reservation
+        SET reservation_status = '미방문'
+        WHERE reservation_id IN
+        <foreach item="id" collection="list" open="(" separator="," close=")">
+			#{id}
+        </foreach>
+    </update>
+    
+    <!-- ========== 의료 관련 목록 ========== -->
+    
+    <!-- 전체 의사 목록 -->
+    <select id="getAllDoctors" resultType="map">
+        SELECT 
+            s.med_staff_id AS staff_id, 
+            m.name AS staff_name,
+            m.id AS user_id,
+            d.med_dept_name,
+            s.role
+        FROM med_staff s
+        JOIN mem m ON s.mem_id = m.mem_id
+        JOIN med_dept d ON s.med_dept_id = d.med_dept_id
+        WHERE (s.role IN ('DOCTOR', 'NURSE', '의사', '간호사'))
+			AND s.status = '재직'
+        ORDER BY d.med_dept_name ASC, m.name ASC
+    </select>
+    
+    <!-- 전체 의료 부서 목록 -->
+    <select id="getAllMedDepts" resultType="map">
+        SELECT med_dept_id, med_dept_name, dept_location, dept_phone_number 
+        FROM med_dept 
+        ORDER BY med_dept_name ASC
+    </select>
+    
+    <!-- 의료 부서별 의사 목록-->
+    <select id="getDoctorListByDept" parameterType="long" resultType="map">
+        SELECT s.med_staff_id AS staff_id, s.role, m.name AS staff_name
+        FROM med_staff s JOIN mem m ON s.mem_id = m.mem_id
+        WHERE s.med_dept_id = #{medDeptId} 
+			AND (s.role = 'DOCTOR' OR s.role = '의사')
+			AND s.status = '재직'
+    </select>
+    
+    <!-- ========== 예약 목록 ========== -->
+
+	<!-- 회원별 예약 목록 -->
+    <select id="getReservationsByMember" parameterType="long" resultType="map">
+        SELECT r.reservation_id, r.reservation_date, r.reservation_time, r.reservation_status, d.med_dept_name, m.name AS doctor_name    
+        FROM reservation r
+        JOIN med_dept d ON r.med_dept_id = d.med_dept_id
+        JOIN med_staff s ON r.doctor_id = s.med_staff_id
+        JOIN mem m ON s.mem_id = m.mem_id
+        WHERE r.mem_id = #{memId}
+        ORDER BY r.reservation_date DESC, r.reservation_time DESC
+    </select>
+
+	<!-- 의사별 예약 목록 -->
+    <select id="getReservationsByDoctor" parameterType="long" resultType="map">
+        SELECT r.reservation_id, r.reservation_date, r.reservation_time, r.visit_type, r.reservation_memo, r.reservation_status,
+            m.name AS patient_name, m.phone_number AS patient_phone
+        FROM reservation r JOIN mem m ON r.mem_id = m.mem_id
+        WHERE r.doctor_id = #{doctorId}
+        ORDER BY r.reservation_date ASC, r.reservation_time ASC
+    </select>
+    
+</mapper>
