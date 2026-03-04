@@ -1,8 +1,14 @@
-// mbcFinalProject1 - com.mbc.mid.dto - OcrResponse.java
+// mbcFinalProject1 - com.mbc.fin1.dto - OcrResponse.java
 package com.mbc.fin1.dto;
 
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class OcrResponse {
     private String resultText;        	// 차량 번호
     private String rawText;           	// 원본 텍스트
@@ -14,86 +20,24 @@ public class OcrResponse {
     private Long parkingLogId;			// 결제할 주차기록 ID
     private Long memId;					// 회원 ID (비회원: null)
     
-    // 추가
-    private boolean alreadyPaid;		// 사전정산 완료 여부
-    
-    public boolean isAlreadyPaid() {
-        return alreadyPaid;
+    // 💡 추가된 필드 2개
+    private Boolean alreadyPaid;        // 결제 완료 여부
+    private String allocatedSpot;       // 배정된 주차 자리 (예: "1층 1행 1열")
+
+    // Service 코드에서 에러 안 나도록 만들어둔 맞춤형 생성자
+    public OcrResponse(String resultText, String rawText, List<String> debugImages, 
+                       String entryTime, String exitTime, Boolean isMember, 
+                       Integer parkingFee, Long parkingLogId, Long memId, String allocatedSpot) {
+        this.resultText = resultText;
+        this.rawText = rawText;
+        this.debugImages = debugImages;
+        this.entryTime = entryTime;
+        this.exitTime = exitTime;
+        this.isMember = isMember;
+        this.parkingFee = parkingFee;
+        this.parkingLogId = parkingLogId;
+        this.memId = memId;
+        this.alreadyPaid = false; 
+        this.allocatedSpot = allocatedSpot; 
     }
-    public void setAlreadyPaid(boolean alreadyPaid) {
-        this.alreadyPaid = alreadyPaid;
-    }
-    // 추가 끝
-    
-	public OcrResponse(String resultText, String rawText, List<String> debugImages, String entryTime, String exitTime, Boolean isMember, Integer parkingFee, Long parkingLogId, Long memId) {
-		this.resultText = resultText;
-		this.rawText = rawText;
-		this.debugImages = debugImages;
-		this.entryTime = entryTime;
-		this.exitTime = exitTime;
-		this.isMember = isMember;
-		this.parkingFee = parkingFee;
-		this.parkingLogId = parkingLogId;
-		this.memId = memId;
-	}
-	public String getResultText() {
-		return resultText;
-	}
-	public void setResultText(String resultText) {
-		this.resultText = resultText;
-	}
-	public String getRawText() {
-		return rawText;
-	}
-	public void setRawText(String rawText) {
-		this.rawText = rawText;
-	}
-	public List<String> getDebugImages() {
-		return debugImages;
-	}
-	public void setDebugImages(List<String> debugImages) {
-		this.debugImages = debugImages;
-	}
-	public String getEntryTime() {
-		return entryTime;
-	}
-	public void setEntryTime(String entryTime) {
-		this.entryTime = entryTime;
-	}
-	public String getExitTime() {
-		return exitTime;
-	}
-	public void setExitTime(String exitTime) {
-		this.exitTime = exitTime;
-	}
-	public Boolean getIsMember() {
-		return isMember;
-	}
-	public void setIsMember(Boolean isMember) {
-		this.isMember = isMember;
-	}
-	public Integer getParkingFee() {
-		return parkingFee;
-	}
-	public void setParkingFee(Integer parkingFee) {
-		this.parkingFee = parkingFee;
-	}
-	public Long getParkingLogId() {
-		return parkingLogId;
-	}
-	public void setParkingLogId(Long parkingLogId) {
-		this.parkingLogId = parkingLogId;
-	}
-	public Long getMemId() {
-		return memId;
-	}
-	public void setMemId(Long memId) {
-		this.memId = memId;
-	}
-	@Override
-	public String toString() {
-		return "OcrResponse [resultText=" + resultText + ", rawText=" + rawText + ", debugImages=" + debugImages
-				+ ", entryTime=" + entryTime + ", exitTime=" + exitTime + ", isMember=" + isMember + ", parkingFee="
-				+ parkingFee + ", parkingLogId=" + parkingLogId + ", memId=" + memId + "]";
-	}
 }

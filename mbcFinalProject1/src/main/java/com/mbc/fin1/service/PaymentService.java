@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mbc.fin1.dao.MemDao;
 import com.mbc.fin1.dao.ParkingLogDao;
+import com.mbc.fin1.dao.ParkingSpotDao;
 import com.mbc.fin1.dao.PaymentDao;
 import com.mbc.fin1.dto.ParkingLogDto;
 import com.mbc.fin1.dto.PaymentDto;
@@ -26,6 +27,9 @@ public class PaymentService {
     
     @Autowired
     private MemDao memDao;
+    
+    @Autowired
+    private ParkingSpotDao parkingSpotDao;
 
     // 결제 정보 저장
     public void processPayment(PaymentDto paymentDto) {
@@ -44,6 +48,7 @@ public class PaymentService {
             boolean isMember = (memDao.checkMemberVehicle(log.getVehicleNum()) > 0);
             log.setIsMember(isMember);
             parkingLogDao.updateExitLog(log);
+            parkingSpotDao.freeSpotByLogId(log.getParkingLogId());
         }
     }
 }

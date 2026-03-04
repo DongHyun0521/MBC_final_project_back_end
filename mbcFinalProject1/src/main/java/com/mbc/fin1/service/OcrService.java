@@ -32,9 +32,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.mbc.fin1.dao.MemDao;
 import com.mbc.fin1.dao.ParkingLogDao;
+import com.mbc.fin1.dao.ParkingSpotDao;
 import com.mbc.fin1.dao.PaymentDao;
 import com.mbc.fin1.dto.OcrResponse;
 import com.mbc.fin1.dto.ParkingLogDto;
+import com.mbc.fin1.dto.ParkingSpotDto;
 
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
@@ -51,10 +53,11 @@ public class OcrService {
     
     @Autowired
     private PaymentDao paymentDao;
+    
+    @Autowired
+    private ParkingSpotDao parkingSpotDao;
 
-    // 추가
     private static final Map<String, Object> ENTRY_LOCK = new ConcurrentHashMap<>();
-    // 추가 끝
 
     // 입차 시
     public OcrResponse processEntryImage(MultipartFile file) {
@@ -119,9 +122,9 @@ public class OcrService {
                         ParkingLogDto existingLog = parkingLogDao.selectRecentEntryLog(finalResult);
 
                         if (existingLog != null && existingLog.getExitTime() == null) {
-                             return new OcrResponse(finalResult, "이미 주차장에 입차된 차량입니다.", debugImages, 
-                                     "ALREADY_PARKED", null, isMember, 0, existingLog.getParkingLogId(), null);
-                        }
+                            return new OcrResponse(finalResult, "이미 주차장에 입차된 차량입니다.", debugImages, 
+                                    "ALREADY_PARKED", null, isMember, 0, existingLog.getParkingLogId(), null, null);
+                       }
 
                         // DB에 입차 기록 생성
                         ParkingLogDto newLog = new ParkingLogDto();
@@ -129,17 +132,25 @@ public class OcrService {
                         boolean isMem = (memDao.checkMemberVehicle(finalResult) > 0);
                         newLog.setIsMember(isMem);
                         parkingLogDao.insertEntryLog(newLog);
+                        
+                        ParkingSpotDto spot = parkingSpotDao.findNearestAvailableSpot();
+                        String allocatedSpotStr = "만차 (빈자리 없음)";
+
+                        if (spot != null) {
+                            parkingSpotDao.allocateSpot(spot.getSpotId(), newLog.getParkingLogId());
+                            allocatedSpotStr = spot.getParkingFloor() + "층 " + spot.getParkingRow() + "행 " + spot.getParkingColumn() + "열";
+                        }
 
                         entryTimeStr = formatDateTime(LocalDateTime.now());
-                        return new OcrResponse(finalResult, rawResult, debugImages, entryTimeStr, null, isMem, 0, newLog.getParkingLogId(), null);
+                        return new OcrResponse(finalResult, rawResult, debugImages, entryTimeStr, null, isMem, 0, newLog.getParkingLogId(), null, allocatedSpotStr);
                     }
                 }
                 
             	// 출차 시
-            	else if (type.equals("EXIT")) {
+                else if (type.equals("EXIT")) {
                     ParkingLogDto log = parkingLogDao.selectRecentEntryLog(finalResult);
                     if (log == null) {
-                        return new OcrResponse(finalResult, "입차 기록이 없습니다.", debugImages, null, null, false, 0, null, null);
+                        return new OcrResponse(finalResult, "입차 기록이 없습니다.", debugImages, null, null, false, 0, null, null, null);
                     }
 
                     Long memId = null;
@@ -155,9 +166,8 @@ public class OcrService {
                     // 요금 계산 (기본 30분 무료, 진료 시 +120분 추가 무료)
                     int feeToPay = calculateFee(totalMin, isMember, hasClinicVisit);
 
-                    // 이미 결제를 완료했는지 확인 (결제 상태가 true인 경우)
+                    // 이미 정산기에서 결제를 완료했는지 확인 (결제 완료 시 요금 0원 처리)
                     if (log.getPaymentStatus() != null && log.getPaymentStatus()) {
-                    	// 결제가 완료되었으므로 요금은 0
                         feeToPay = 0; 
                     }
 
@@ -172,31 +182,23 @@ public class OcrService {
                         parkingLogDao.updateExitLog(log);
                         
                         msgBuilder.append("무료 주차/정산 완료. 안녕히 가십시오.");
-                        OcrResponse res = new OcrResponse(
-                                finalResult, msgBuilder.toString(), debugImages, 
+                        return new OcrResponse(finalResult, msgBuilder.toString(), debugImages, 
                                 formatDateTime(log.getEntryTime()), formatDateTime(now), 
-                                isMember, 0, log.getParkingLogId(), memId
-                        );
-                        res.setAlreadyPaid(true);
-                        return res;
+                                isMember, 0, log.getParkingLogId(), memId, null);
                     } 
                     // 결제가 필요한 경우
                     else {
                         msgBuilder.append("결제가 필요합니다.");
-                        OcrResponse res = new OcrResponse(
-                                finalResult, msgBuilder.toString(), debugImages,
+                        return new OcrResponse(finalResult, msgBuilder.toString(), debugImages,
                                 formatDateTime(log.getEntryTime()), formatDateTime(now), 
-                                isMember, feeToPay, log.getParkingLogId(), memId
-                        );
-                        res.setAlreadyPaid(false);
-                        return res;
+                                isMember, feeToPay, log.getParkingLogId(), memId, null);
                     }
                 }
             }
-            return new OcrResponse(finalResult, rawResult, debugImages, entryTimeStr, exitTimeStr, isMember, parkingFee, null, null);
+            return new OcrResponse(finalResult, rawResult, debugImages, entryTimeStr, exitTimeStr, isMember, parkingFee, null, null, null);
         } catch (Exception e) {
             e.printStackTrace();
-            return new OcrResponse("에러", "에러", debugImages, "에러", "에러", false, -1, null, null);
+            return new OcrResponse("에러", "에러", debugImages, "에러", "에러", false, -1, null, null, null);
         } finally {
             if (tempFile != null) tempFile.delete();
         }

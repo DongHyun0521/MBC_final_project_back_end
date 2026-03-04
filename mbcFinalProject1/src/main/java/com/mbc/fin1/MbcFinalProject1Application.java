@@ -6,9 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class MbcFinalProject1Application {
-
 	public static void main(String[] args) {
 		SpringApplication.run(MbcFinalProject1Application.class, args);
 	}
-
 }

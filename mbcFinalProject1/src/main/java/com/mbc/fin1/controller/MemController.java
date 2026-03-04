@@ -160,7 +160,6 @@ public class MemController {
         return "success";
     }
     */
-
 	@PostMapping("/vehiRegi")
 	public String addVehicle(@RequestBody MemberVehicleDto vehicleDto, HttpSession session) {
 		System.out.println("=> MemController: addVehicle | " + new Date());

@@ -112,6 +112,7 @@
         <div class="modal-body">
           <div v-if="!foundId">
             <input v-model="findUser.name" type="text" placeholder="성함" class="m-input" />
+            <input v-model="findUser.phoneNumber" type="text" placeholder="휴대폰 번호 (- 없이 입력)" class="m-input" />
             <input v-model="findUser.email" type="email" placeholder="이메일" class="m-input" />
             <button class="btn-m-find" @click="handleFindId">아이디 확인</button>
           </div>
@@ -152,7 +153,7 @@ const saveId = ref(false);        // 아이디 저장 체크박스
 
 // 아이디 찾기 모달 관련
 const isFindIdModalOpen = ref(false); // 모달 열림 여부
-const findUser = ref({ name: '', email: '' }); // 찾기 입력값
+const findUser = ref({ name: '', email: '', phoneNumber: '' }); // 찾기 입력값
 const foundId = ref("");          // 찾은 아이디 결과
 
 
@@ -182,12 +183,12 @@ const handleStyle = computed(() => {
 // 메인 탭 변경 (환자 <-> 관계자)
 const setMainTab = (type) => {
   mainTab.value = type;
-  
+
   user.value.password = '';
 
   // 아이디 처리
   const savedCookie = cookies.get('userId'); // 쿠키에서 저장된 아이디 확인
-  
+
   if (saveId.value && savedCookie) {
     // 아이디 저장이 체크되어 있고 저장된 쿠키가 있다면, 지우지 말고 다시 채워줌
     user.value.id = savedCookie;
@@ -221,8 +222,8 @@ const checkID = () => {
 
 // 아이디 찾기 요청
 const handleFindId = async () => {
-  if (!findUser.value.name || !findUser.value.email) {
-    alert("정보를 입력해 주세요"); return;
+  if (!findUser.value.name || !findUser.value.email || !findUser.value.phoneNumber) {
+    alert("모든 정보를 입력해 주세요"); return;
   }
   try {
     const res = await findIdReq(findUser.value);
@@ -310,7 +311,7 @@ const handleLogin = async () => {
           const adminExtraRes = await getAdminMyInfoReq();
 
           if (adminExtraRes.data) {
-            // 서버의 /admin/my-info에서 준 값들로 싹 갈아치웁니다.
+            // 서버의 /admin/my-info에서 준 값들로 싹 갈아치우기
             loginData.adminDeptName = adminExtraRes.data.deptName; // "홍보팀" 등 진짜 이름
             loginData.isWonmu = adminExtraRes.data.isWonmu;      // true/false
             loginData.isPr = adminExtraRes.data.isPr;            // true/false
@@ -703,52 +704,74 @@ input:focus {
   z-index: 2000;
 }
 
+/* 아이디 찾기 모달 카드 디자인 */
 .modal-card {
   background: #fff;
-  padding: 40px;
-  border-radius: 4px;
+  padding: 50px 40px;
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
+.modal-card h3 {
+  font-size: 24px;
+  color: #005baa;
+  margin-bottom: 30px;
+  font-weight: 700;
+}
+
+/* 모달 내부 input을 메인 로그인창과 동일한 '밑줄' 스타일로 통일 */
 .m-input {
+  font-family: 'pretendard';
   width: 100%;
-  padding: 12px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  background: #f9f9f9;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid #ddd; /* 메인창과 동일 */
+  margin-bottom: 20px;
+  background: transparent;
+  font-size: 16px;
+  transition: 0.3s;
 }
 
+.m-input:focus {
+  border-bottom-color: #005baa;
+  outline: none;
+}
+
+/* 모달 버튼 스타일 통일 */
 .btn-m-find {
   width: 100%;
-  padding: 14px;
-  background: #043264;
+  padding: 16px;
+  background: #005baa; /* 메인 버튼 컬러와 통일 */
   color: #fff;
   border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .btn-m-close {
   width: 100%;
   padding: 12px;
   background: #fff;
-  color: #999;
-  border: 1px solid #eee;
-  border-radius: 4px;
+  color: #bbb;
+  border: none;
+  font-size: 14px;
   cursor: pointer;
+  text-decoration: underline; /* 닫기 버튼은 링크 느낌으로 */
 }
 
+/* 아이디 결과 박스 */
 .id-res-box {
-  font-size: 24px;
-  font-weight: 700;
-  color: #043264;
-  padding: 20px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #005baa;
+  padding: 30px 20px;
   background: #f0f7ff;
   margin-bottom: 20px;
+  border-radius: 4px;
 }
 </style>

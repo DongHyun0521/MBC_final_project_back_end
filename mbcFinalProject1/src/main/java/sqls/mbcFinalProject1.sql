@@ -1,5 +1,4 @@
 
-
 DROP TABLE IF EXISTS member_vehicle;	-- 
 DROP TABLE IF EXISTS reservation;		-- 
 DROP TABLE IF EXISTS payment;			-- 
@@ -67,16 +66,15 @@ CREATE TABLE payment (
     pay_method VARCHAR(50),							-- 결제 수단
     pay_date TIMESTAMP NOT NULL DEFAULT now()		-- 결제 일시
 );
--- 주차장 구역 상태
+-- 주차장 구역
 CREATE TABLE parking_spot (
-    spot_id SERIAL PRIMARY KEY,					-- PK
+    spot_id SERIAL PRIMARY KEY,							-- PK
     parking_log_id INTEGER DEFAULT NULL
-		REFERENCES parking_log(parking_log_id),	-- FK (parking_log.parking_log_id)
-    floor INTEGER NOT NULL,						-- 층 (1, 2, ...)
-    zone VARCHAR(1) NOT NULL,					-- 구역 (A, B, ...)
-	spot_number INTEGER NOT NULL,				-- 번호 (1, 2, ...)
-	--distance_from_entrance INTEGER NOT NULL,	-- 입구로부터의 거리
-	is_parked BOOLEAN NOT NULL DEFAULT FALSE	-- 주차 여부
+		REFERENCES parking_log(parking_log_id),			-- FK (parking_log.parking_log_id)
+    parking_floor INTEGER NOT NULL,						-- 층
+    parking_row INTEGER NOT NULL,						-- 행(가로)
+	parking_column INTEGER NOT NULL,					-- 열(세로)
+	is_parked BOOLEAN NOT NULL DEFAULT FALSE			-- 주차 여부
 );
 -- 의료 부서
 CREATE TABLE med_dept (
@@ -391,7 +389,11 @@ JOIN gen_doc g ON m.id = g.gen_id;
 -- ==================================================
 
 -- 주차 자리
-
+INSERT INTO parking_spot (parking_floor, parking_row, parking_column)
+SELECT f, r, c
+FROM generate_series(1, 3) AS f,     -- 1~3층
+     generate_series(1, 4) AS r,     -- 1~4행
+     generate_series(1, 10) AS c;    -- 1~10열
 
 -- ==================================================
 

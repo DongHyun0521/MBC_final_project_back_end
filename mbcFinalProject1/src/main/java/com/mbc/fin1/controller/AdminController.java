@@ -261,7 +261,7 @@ public class AdminController {
 
         boolean WonMu = adminService.isWonMu(member.getMemId());
         if (!WonMu) {	// 행정 중 원무 아님
-            if (vocDto.getDel() == 1 || !vocDto.getAnswerStatus())
+            if (vocDto.getDel() == 1 || !vocDto.isAnswerStatus())
             	return null;
         }
         return adminService.getVocDetail(vocId);	// 행정 중 원무

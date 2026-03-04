@@ -33,7 +33,6 @@ import reservation from '@/router/reservation/reservation.js'
 import customer from '@/router/customer/customer.js'
 
 // 담당자가 준 파일들 불러오기
-import parkingspot from '@/router/parkingspot/parkingspot.js'
 import entry from '@/router/entry/entry.js'
 import exit from '@/router/exit/exit.js'
 
@@ -130,50 +129,6 @@ const router = createRouter({
         // [B & C] 주차장/키오스크 파일들
         ...entry,
         ...exit,
-        ...parkingspot
-
-        // // [B] 키오스크 그룹 (KioskLayout 사용)
-        // {
-        //     path: '/kiosk',
-        //     component: KioskLayout,
-        //     children: [
-        //         { path: '', redirect: '/kiosk/entry' }, // /kiosk 치면 입차화면으로
-        //         {
-        //             path: 'entry',
-        //             component: () => import('@/views/parkingLog/Entry.vue'),
-        //             meta: { title: '입차 시스템' }
-        //         },
-        //         {
-        //             path: 'exit',
-        //             component: () => import('@/views/parkingLog/Exit.vue'),
-        //             meta: { title: '출차 시스템' }
-        //         },
-        //     ]
-        // },
-
-        // // [C] 주차장 현황 그룹 (ParkingSystem 레이아웃 사용)
-        // {
-        //     path: '/parking-system',
-        //     component: ParkingSystem,
-        //     children: [
-        //         {
-        //             path: '',
-        //             redirect: '/parking-system/status'
-        //         },
-        //         {
-        //             path: 'status',
-        //             name: 'ParkingStatus',
-        //             component: () => import('@/views/parkingSpot/ParkingStatus.vue'),
-        //             meta: { title: '주차 현황 모니터링' }
-        //         },
-        //         {
-        //             path: 'search',
-        //             name: 'VehicleSearch',
-        //             component: () => import('@/views/parkingSpot/VehicleSearch.vue'),
-        //             meta: { title: '차량 위치 조회' }
-        //         }
-        //     ]
-        // }
     ]
 })
 

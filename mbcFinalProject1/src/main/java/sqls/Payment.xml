@@ -8,22 +8,7 @@
         VALUES (#{parkingLogId}, #{memId}, #{amount}, #{payMethod}, now())
     </insert>
 
-    <!-- parking_log_id로 결제 정보 조회 (사전정산 pay_date 확인용) -->
-    <select id="findByParkingLogId" parameterType="long" resultType="com.mbc.fin1.dto.PaymentDto">
-        SELECT 
-            pay_id          AS payId,
-            parking_log_id  AS parkingLogId,
-            mem_id          AS memId,
-            amount,
-            pay_method      AS payMethod,
-            pay_date        AS payDate
-        FROM payment
-        WHERE parking_log_id = #{parkingLogId}
-        ORDER BY pay_date DESC
-        LIMIT 1
-    </select>
-
-    <!-- 진료 완료 여부 확인 (당일 진료 완료) -->
+    <!-- 진료 완료 여부 확인 (당일 진료 완료 시 주차 2시간 무료) -->
     <select id="checkClinicVisit" parameterType="string" resultType="int">
         SELECT COUNT(*)
         FROM reservation r

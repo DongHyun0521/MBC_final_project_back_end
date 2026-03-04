@@ -162,11 +162,11 @@ const entryTime = ref(''); // 입차 확정 시각
 const countdown = ref(3); // 초기 화면 복귀까지 남은 초
 let timerId = null; // 타이머(setInterval)를 멈추기 위해 보관하는 ID
 
-// [추가] 입차 시작 시 만차 여부 체크 로직
+
 const startEntry = () => {
-  console.log("화면 터치: 입차 사진 업로드 화면으로 이동");
-  viewMode.value = 'input'; 
+  viewMode.value = 'input';
 };
+
 
 const handleFileUpload = async (event) => {
   const file = event.target.files[0];

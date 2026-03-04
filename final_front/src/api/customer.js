@@ -83,7 +83,7 @@ export const addVocReq = (data) => {
 
 // 글 수정 
 export const editVocReq = (data) => {
-    return url.post('/member/voc/update', data, {
+    return url.put('/member/voc/update', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
 }

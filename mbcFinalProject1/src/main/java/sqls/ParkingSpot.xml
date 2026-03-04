@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.fin1.dao.ParkingSpotDao">
+
+    <select id="findNearestAvailableSpot" resultType="com.mbc.fin1.dto.ParkingSpotDto">
+        SELECT 
+            spot_id AS spotId, 
+            parking_log_id AS parkingLogId, 
+            parking_floor AS parkingFloor, 
+            parking_row AS parkingRow, 
+            parking_column AS parkingColumn, 
+            is_parked AS isParked
+        FROM parking_spot
+        WHERE is_parked = false
+        ORDER BY parking_floor ASC, (parking_row + parking_column) ASC, parking_row ASC
+        LIMIT 1
+    </select>
+
+    <update id="allocateSpot">
+        UPDATE parking_spot 
+        SET is_parked = true, 
+            parking_log_id = #{parkingLogId} 
+        WHERE spot_id = #{spotId}
+    </update>
+
+    <update id="freeSpotByLogId">
+        UPDATE parking_spot 
+        SET is_parked = false, 
+            parking_log_id = NULL 
+        WHERE parking_log_id = #{parkingLogId}
+    </update>
+
+</mapper>

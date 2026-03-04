@@ -31,13 +31,6 @@
         SET payment_status = true 
         WHERE parking_log_id = #{parkingLogId}
     </update>
-    
-    <!-- 추가 -->
-    <!-- 동시 중복 로그 제거 (선점 실패 시) -->
-    <delete id="deleteById" parameterType="long">
-        DELETE FROM parking_log
-        WHERE parking_log_id = #{parkingLogId}
-    </delete>
 
     <!-- PK로 단건 조회 -->
     <select id="findById" parameterType="int" resultType="com.mbc.fin1.dto.ParkingLogDto">
@@ -51,22 +44,5 @@
         FROM parking_log 
         WHERE parking_log_id = #{parkingLogId}
     </select>
-
-    <!-- 회원차량 여부 확인 -->
-    <select id="isMemberVehicle" parameterType="String" resultType="int">
-        SELECT COUNT(*) 
-        FROM member_vehicle 
-        WHERE vehicle_num = #{vehicleNum}
-    </select>
-
-    <!-- 차량번호로 회원 ID 조회 -->
-    <select id="getMemberIdByVehicle" parameterType="String" resultType="Long">
-        SELECT m.mem_id 
-        FROM mem m 
-        JOIN member_vehicle mv ON m.mem_id = mv.mem_id 
-        WHERE mv.vehicle_num = #{vehicleNum} 
-        LIMIT 1
-    </select>
-    <!-- 추가 끝 -->
   
 </mapper>
