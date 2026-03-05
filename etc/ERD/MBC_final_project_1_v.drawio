@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36" scale="1" border="0" version="29.0.3">
   <diagram name="페이지-1" id="tpx2ipsGGaGK6a8V1PRk">
-    <mxGraphModel dx="4300" dy="3256" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" background="#ffffff" math="0" shadow="0">
+    <mxGraphModel dx="1695" dy="1691" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" background="#ffffff" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -765,7 +765,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="AmlnuFYYE5iqeczqY0zE-136" value="parking_spot" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=#FF8000;strokeColor=#d6b656;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="470" y="-360" width="510" height="240" as="geometry" />
+          <mxGeometry x="470" y="-360" width="510" height="210" as="geometry" />
         </mxCell>
         <mxCell id="AmlnuFYYE5iqeczqY0zE-137" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" parent="AmlnuFYYE5iqeczqY0zE-136" vertex="1">
           <mxGeometry y="30" width="510" height="30" as="geometry" />
@@ -775,7 +775,7 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-139" value="spot_id SERIAL PRIMARY KEY" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-137" vertex="1">
+        <mxCell id="AmlnuFYYE5iqeczqY0zE-139" value="parking_spot_id SERIAL PRIMARY KEY" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-137" vertex="1">
           <mxGeometry x="30" width="480" height="30" as="geometry">
             <mxRectangle width="480" height="30" as="alternateBounds" />
           </mxGeometry>
@@ -801,7 +801,7 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-145" value="floor INTEGER NOT NULL," style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-143" vertex="1">
+        <mxCell id="AmlnuFYYE5iqeczqY0zE-145" value="parking_floor INTEGER NOT NULL" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-143" vertex="1">
           <mxGeometry x="30" width="480" height="30" as="geometry">
             <mxRectangle width="480" height="30" as="alternateBounds" />
           </mxGeometry>
@@ -814,7 +814,7 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-148" value="zone VARCHAR(1) NOT NULL" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-146" vertex="1">
+        <mxCell id="AmlnuFYYE5iqeczqY0zE-148" value="parking_row INTEGER NOT NULL" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-146" vertex="1">
           <mxGeometry x="30" width="480" height="30" as="geometry">
             <mxRectangle width="480" height="30" as="alternateBounds" />
           </mxGeometry>
@@ -827,26 +827,13 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-157" value="spot_number INTEGER NOT NULL" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-155" vertex="1">
-          <mxGeometry x="30" width="480" height="30" as="geometry">
-            <mxRectangle width="480" height="30" as="alternateBounds" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-152" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" parent="AmlnuFYYE5iqeczqY0zE-136" vertex="1">
-          <mxGeometry y="180" width="510" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-153" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;editable=1;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-152" vertex="1">
-          <mxGeometry width="30" height="30" as="geometry">
-            <mxRectangle width="30" height="30" as="alternateBounds" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-154" value="distance_from_entrance INTEGER NOT NULL" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-152" vertex="1">
+        <mxCell id="AmlnuFYYE5iqeczqY0zE-157" value="parking_column INTEGER NOT NULL" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-155" vertex="1">
           <mxGeometry x="30" width="480" height="30" as="geometry">
             <mxRectangle width="480" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
         <mxCell id="AmlnuFYYE5iqeczqY0zE-149" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=0;" parent="AmlnuFYYE5iqeczqY0zE-136" vertex="1">
-          <mxGeometry y="210" width="510" height="30" as="geometry" />
+          <mxGeometry y="180" width="510" height="30" as="geometry" />
         </mxCell>
         <mxCell id="AmlnuFYYE5iqeczqY0zE-150" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;editable=1;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-149" vertex="1">
           <mxGeometry width="30" height="30" as="geometry">
@@ -953,7 +940,7 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-177" value="&lt;div&gt;spot_id INTEGER&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;REFERENCES parking_spot(spot_id)&lt;/span&gt;&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-175" vertex="1">
+        <mxCell id="AmlnuFYYE5iqeczqY0zE-177" value="&lt;div&gt;parking_spot_id INTEGER&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;REFERENCES parking_spot(spot_id)&lt;/span&gt;&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-175" vertex="1">
           <mxGeometry x="30" width="480" height="30" as="geometry">
             <mxRectangle width="480" height="30" as="alternateBounds" />
           </mxGeometry>
@@ -1167,7 +1154,7 @@
             <mxRectangle width="30" height="30" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="AmlnuFYYE5iqeczqY0zE-220" value="&lt;div&gt;spot_id INTEGER&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;REFERENCES parking_spot(spot_id)&lt;/span&gt;&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-218" vertex="1">
+        <mxCell id="AmlnuFYYE5iqeczqY0zE-220" value="&lt;div&gt;parking_spot_id INTEGER&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;REFERENCES parking_spot(spot_id)&lt;/span&gt;&lt;/div&gt;" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;overflow=hidden;whiteSpace=wrap;html=1;" parent="AmlnuFYYE5iqeczqY0zE-218" vertex="1">
           <mxGeometry x="30" width="479" height="30" as="geometry">
             <mxRectangle width="479" height="30" as="alternateBounds" />
           </mxGeometry>
