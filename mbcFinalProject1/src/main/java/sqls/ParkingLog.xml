@@ -4,7 +4,7 @@
  	
  	<!-- 수정: parameterType String → ParkingLogDto, useGeneratedKeys 추가 -->
  	<!-- 차량 입차 시 -->
- 	<insert id="insertEntryLog" parameterType="com.mbc.fin1.dto.ParkingLogDto" useGeneratedKeys="true" keyProperty="parkingLogId">
+ 	<insert id="insertEntryLog" parameterType="com.mbc.fin1.dto.ParkingLogDto" useGeneratedKeys="true" keyProperty="parkingLogId" keyColumn="parking_log_id">
         INSERT INTO parking_log (vehicle_num, entry_time) 
         VALUES (#{vehicleNum}, NOW())
     </insert>

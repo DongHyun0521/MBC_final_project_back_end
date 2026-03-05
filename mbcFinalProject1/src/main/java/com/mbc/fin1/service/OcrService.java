@@ -138,7 +138,9 @@ public class OcrService {
 
                         if (spot != null) {
                             parkingSpotDao.allocateSpot(spot.getSpotId(), newLog.getParkingLogId());
-                            allocatedSpotStr = spot.getParkingFloor() + "층 " + spot.getParkingRow() + "행 " + spot.getParkingColumn() + "열";
+                            
+                            char rowChar = (char) ('A' + spot.getParkingRow() - 1);
+                            allocatedSpotStr = "지하 " + spot.getParkingFloor() + "층: " + rowChar + "-" + spot.getParkingColumn();
                         }
 
                         entryTimeStr = formatDateTime(LocalDateTime.now());

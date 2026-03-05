@@ -4,7 +4,7 @@
 
     <select id="findNearestAvailableSpot" resultType="com.mbc.fin1.dto.ParkingSpotDto">
         SELECT 
-            spot_id AS spotId, 
+            parking_spot_id AS spotId, 
             parking_log_id AS parkingLogId, 
             parking_floor AS parkingFloor, 
             parking_row AS parkingRow, 
@@ -20,7 +20,7 @@
         UPDATE parking_spot 
         SET is_parked = true, 
             parking_log_id = #{parkingLogId} 
-        WHERE spot_id = #{spotId}
+        WHERE parking_spot_id = #{spotId}
     </update>
 
     <update id="freeSpotByLogId">

@@ -68,7 +68,7 @@ CREATE TABLE payment (
 );
 -- 주차장 구역
 CREATE TABLE parking_spot (
-    spot_id SERIAL PRIMARY KEY,							-- PK
+    parking_spot_id SERIAL PRIMARY KEY,					-- PK
     parking_log_id INTEGER DEFAULT NULL
 		REFERENCES parking_log(parking_log_id),			-- FK (parking_log.parking_log_id)
     parking_floor INTEGER NOT NULL,						-- 층
@@ -93,8 +93,8 @@ CREATE TABLE med_staff (
 	status VARCHAR(20) NOT NULL DEFAULT '재직',		-- 재직 상태
 	med_dept_id INTEGER
 		REFERENCES med_dept(med_dept_id),			-- FK (med_dept.med_dept_id)
-	spot_id INTEGER
-		REFERENCES parking_spot(spot_id),			-- FK (parking_spot.spot_id)
+	parking_spot_id INTEGER
+		REFERENCES parking_spot(parking_spot_id),	-- FK (parking_spot.parking_spot_id)
 	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 회원가입 일시
 );
 -- 진료 예약
@@ -131,8 +131,8 @@ CREATE TABLE admin_staff (
 	status VARCHAR(20) NOT NULL DEFAULT '재직',		-- 재직 상태
 	admin_dept_id INTEGER
 		REFERENCES admin_dept(admin_dept_id),		-- FK (admin_dept.admin_dept_id)
-	spot_id INTEGER
-		REFERENCES parking_spot(spot_id),			-- FK (parking_spot.spot_id)
+	parking_spot_id INTEGER
+		REFERENCES parking_spot(parking_spot_id),			-- FK (parking_spot.parking_spot_id)
 	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 가입 일시
 );
 -- 고객의소리
@@ -394,40 +394,6 @@ SELECT f, r, c
 FROM generate_series(1, 3) AS f,     -- 1~3층
      generate_series(1, 4) AS r,     -- 1~4행
      generate_series(1, 10) AS c;    -- 1~10열
-
--- ==================================================
-
-SELECT * FROM parking_log;
--- 비회원 차량
-WITH new_log AS (
-    INSERT INTO parking_log (vehicle_num, entry_time, is_member, payment_status)
-    VALUES ('18하6294', now() - INTERVAL '3 hours', false, false)
-    RETURNING parking_log_id
-)
-UPDATE parking_spot
-SET parking_log_id = (SELECT parking_log_id FROM new_log),
-    is_parked = true
-WHERE spot_id = 1;
--- 회원 차량 (진료X)
-WITH new_log AS (
-    INSERT INTO parking_log (vehicle_num, entry_time, is_member, payment_status)
-    VALUES ('62서0424', now() - INTERVAL '3 hours', false, false)
-    RETURNING parking_log_id
-)
-UPDATE parking_spot
-SET parking_log_id = (SELECT parking_log_id FROM new_log),
-    is_parked = true
-WHERE spot_id = 2;
--- 회원 차량 (진료O)
-WITH new_log AS (
-    INSERT INTO parking_log (vehicle_num, entry_time, is_member, payment_status)
-    VALUES ('89루0528', now() - INTERVAL '3 hours', false, false)
-    RETURNING parking_log_id
-)
-UPDATE parking_spot
-SET parking_log_id = (SELECT parking_log_id FROM new_log),
-    is_parked = true
-WHERE spot_id = 3;
 
 -- ==================================================
 

@@ -59,7 +59,7 @@
           <!-- 데이터 카드 -->
           <div class="info-card data-card">
             <!-- 입차 기록 없음 -->
-            <template v-if="parkingFee === -1">
+            <template v-if="!entryTime">
               <h2 class="card-title error-title">차량 조회 실패</h2>
 
               <table class="res-table">

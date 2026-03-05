@@ -62,6 +62,12 @@
                   <th>입차 시각</th>
                   <td>{{ entryTime || '시간 정보 없음' }}</td>
                 </tr>
+
+                <tr>
+                  <th>주차 위치</th>
+                  <td class="spot-txt">{{ allocatedSpot }}</td>
+                </tr>
+
                 <tr>
                   <th>상태</th>
                   <td class="status-success">정상 입차</td>
@@ -160,6 +166,7 @@ const resultText = ref(''); // 인식된 차량 번호
 const isAlreadyParked = ref(false); // 이미 주차된 차량인지 여부
 const entryTime = ref(''); // 입차 확정 시각
 const countdown = ref(3); // 초기 화면 복귀까지 남은 초
+const allocatedSpot = ref(''); // 💡 [추가] 배정된 주차 자리 담을 변수
 let timerId = null; // 타이머(setInterval)를 멈추기 위해 보관하는 ID
 
 
@@ -181,6 +188,7 @@ const submitImage = async () => {
   entryTime.value = '';
   debugImages.value = [];
   isAlreadyParked.value = false;
+  allocatedSpot.value = ''; // 💡 [추가] 초기화
 
   try {
     const response = await uploadEntryImage(selectedFile.value);
@@ -191,6 +199,7 @@ const submitImage = async () => {
 
     debugImages.value = data.debugImages || [];
     resultText.value = data.resultText || '';
+    allocatedSpot.value = data.allocatedSpot || '배정 안 됨'; // 💡 [추가] 백엔드 데이터 연결
 
     if (data.entryTime === 'ALREADY_PARKED') {
       isAlreadyParked.value = true;
@@ -234,6 +243,7 @@ const resetToIdle = () => {
   debugImages.value = [];
   resultText.value = '';
   entryTime.value = '';
+  allocatedSpot.value = ''; // 💡 [추가] 대기화면 돌아갈 때 초기화
   if (timerId) {
     clearInterval(timerId);
     timerId = null;

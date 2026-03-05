@@ -4,7 +4,7 @@
 
 	<!-- 의료진 회원 가입 -->
     <insert id="addMedStaff" parameterType="com.mbc.fin1.dto.MedStaffDto">
-        INSERT INTO med_staff (mem_id, role, license_number, status, med_dept_id, spot_id) 
+        INSERT INTO med_staff (mem_id, role, license_number, status, med_dept_id, parking_spot_id) 
         VALUES (#{memId}, #{role}, #{licenseNumber}, #{status}, #{medDeptId}, #{spotId})
     </insert>
     
