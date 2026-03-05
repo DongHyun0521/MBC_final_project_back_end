@@ -183,6 +183,8 @@ public class OcrService {
                         log.setIsMember(isMember);
                         parkingLogDao.updateExitLog(log);
                         
+                        parkingSpotDao.freeSpotByLogId(log.getParkingLogId());
+                        
                         msgBuilder.append("무료 주차/정산 완료. 안녕히 가십시오.");
                         return new OcrResponse(finalResult, msgBuilder.toString(), debugImages, 
                                 formatDateTime(log.getEntryTime()), formatDateTime(now), 

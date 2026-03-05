@@ -394,6 +394,27 @@ SELECT f, r, c
 FROM generate_series(1, 3) AS f,     -- 1~3층
      generate_series(1, 4) AS r,     -- 1~4행
      generate_series(1, 10) AS c;    -- 1~10열
+     
+-- ==================================================
+
+-- 3시간 전 차량 입차
+-- 18하6294 | 62서0424 | 78우7493 | 89루0528
+WITH inserted_log AS (
+    INSERT INTO parking_log (vehicle_num, entry_time, is_member, payment_status)
+    VALUES ('18하6294', now() - INTERVAL '3 hours', FALSE, FALSE)
+    RETURNING parking_log_id
+)
+UPDATE parking_spot
+SET 
+    is_parked = TRUE,
+    parking_log_id = (SELECT parking_log_id FROM inserted_log)
+WHERE parking_spot_id = (
+    SELECT parking_spot_id 
+    FROM parking_spot 
+    WHERE is_parked = FALSE 
+    ORDER BY parking_floor ASC, parking_row ASC, parking_column ASC 
+    LIMIT 1
+);
 
 -- ==================================================
 

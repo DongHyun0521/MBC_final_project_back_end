@@ -15,4 +15,7 @@ public class ParkingSpotDto {
     private Integer parkingRow;		// 행(가로)
     private Integer parkingColumn;	// 열(세로)
     private Boolean isParked;		// 주차 여부
+    
+    private String vehicleNum;	// 차량 번호
+    private String entryTime;	// 입차 시간
 }

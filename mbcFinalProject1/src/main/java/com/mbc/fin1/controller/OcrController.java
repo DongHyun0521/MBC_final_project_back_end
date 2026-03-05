@@ -1,4 +1,4 @@
-// mbcFinalProject1 - com.mbc.mid.controller - OcrController.java
+// mbcFinalProject1 - com.mbc.fin1.controller - OcrController.java
 package com.mbc.fin1.controller;
 
 import java.util.Date;

@@ -36,6 +36,8 @@ import customer from '@/router/customer/customer.js'
 import entry from '@/router/entry/entry.js'
 import exit from '@/router/exit/exit.js'
 
+import ParkingMap from '@/views/parkingLog/ParkingMap.vue'
+
 // 라우터 설정 시작
 const router = createRouter({
     history: createWebHistory(),
@@ -116,6 +118,11 @@ const router = createRouter({
                     path: '/parkinginfo',
                     name: 'parkinginfo',
                     component: ParkingInfo
+                },
+                {
+                    path: '/parking',
+                    name: 'parkingmap',
+                    component: ParkingMap
                 },
 
                 // 6. 쪼개놓은 파일들 여기서 합치지 (Spread Operator)
