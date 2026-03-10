@@ -10,6 +10,261 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.imageio.ImageIO;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.mbc.fin1.dao.MemDao;
+import com.mbc.fin1.dao.ParkingLogDao;
+import com.mbc.fin1.dao.ParkingSpotDao;
+import com.mbc.fin1.dao.ReceiptDao;
+import com.mbc.fin1.dto.OcrResponse;
+import com.mbc.fin1.dto.ParkingLogDto;
+import com.mbc.fin1.dto.ParkingSpotDto;
+
+@Service
+@Transactional
+public class OcrService {
+
+    @Autowired
+    private ParkingLogDao parkingLogDao;
+    
+    @Autowired
+    private MemDao memDao;
+    
+    @Autowired
+    private ReceiptDao receiptDao;
+    
+    @Autowired
+    private ParkingSpotDao parkingSpotDao;
+
+    private static final Map<String, Object> ENTRY_LOCK = new ConcurrentHashMap<>();
+
+    public OcrResponse processEntryImage(MultipartFile file) {
+        System.out.println("=> OcrService: processEntryImage | "+ new Date());
+        return processImageCommon(file, "ENTRY");
+    }
+
+    public OcrResponse processExitImage(MultipartFile file) {
+        System.out.println("=> OcrService: processExitImage | "+ new Date());
+        return processImageCommon(file, "EXIT");
+    }
+
+    // 파이썬 AI 서버 호출
+    private Map<String, Object> callPythonAiServer(MultipartFile file) {
+        System.out.println("=> OcrService: 파이썬 AI 서버(8001번 포트) 호출 시작!");
+        RestTemplate restTemplate = new RestTemplate();
+        String aiServerUrl = "http://localhost:8001/api/v1/ocr";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", file.getResource());
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(aiServerUrl, requestEntity, Map.class);
+            Map<String, Object> result = response.getBody();
+            
+            if (result != null && "success".equals(result.get("status"))) {
+                return result; 
+            }
+        } catch (Exception e) {
+            System.err.println("🚨 파이썬 서버 통신 실패: " + e.getMessage());
+        }
+        
+        Map<String, Object> failMap = new HashMap<>();
+        failMap.put("plate_number", "인식실패");
+        failMap.put("country", "UNKNOWN");
+        failMap.put("is_ev", false);
+        return failMap;
+    }
+
+    private OcrResponse processImageCommon(MultipartFile file, String type) {
+        System.out.println("=> OcrService: processImageCommon | "+ new Date());
+        List<String> debugImages = new ArrayList<>();
+
+        try {
+            BufferedImage original = ImageIO.read(file.getInputStream());
+            debugImages.add(imageToBase64(original));
+
+            Map<String, Object> aiResult = callPythonAiServer(file);
+            String finalResult = (String) aiResult.get("plate_number");
+            String country = (String) aiResult.get("country");
+            Boolean isEv = (Boolean) aiResult.get("is_ev");
+
+            System.out.println("🤖 파이썬 인식 결과 -> 번호: " + finalResult + ", 국가: " + country + ", 전기차: " + isEv);
+            
+            String entryTimeStr = "";
+            String exitTimeStr = "";
+            Integer parkingFee = -1;
+            Boolean isMember = false;
+
+            if (isValidResult(finalResult)) {
+                // ============================== [ 입차 로직 ] ==============================
+                if (type.equals("ENTRY")) {
+                    Object lock = ENTRY_LOCK.computeIfAbsent(finalResult, k -> new Object());
+                    synchronized (lock) {
+                        ParkingLogDto existingLog = parkingLogDao.selectRecentEntryLog(finalResult);
+
+                        if (existingLog != null && existingLog.getExitTime() == null) {
+                            // 💡 OcrResponse 생성자 순서 변경: country, isEv가 중간으로 이동!
+                            return new OcrResponse(finalResult, "이미 주차장에 입차된 차량입니다.", debugImages, 
+                                    country, isEv, "ALREADY_PARKED", null, isMember, 0, existingLog.getParkingLogId(), null, null);
+                        }
+
+                        ParkingLogDto newLog = new ParkingLogDto();
+                        newLog.setVehicleNum(finalResult);
+                        newLog.setLicensePlateCountry(country);
+                        newLog.setIsEvLicensePlate(isEv);
+                        
+                        boolean isMem = (memDao.checkMemberVehicle(finalResult) > 0);
+                        newLog.setIsMember(isMem);
+                        parkingLogDao.insertEntryLog(newLog);
+                        
+                        // 전기차 맞춤형 주차 자리 배정 로직
+                        ParkingSpotDto spot = null;
+                        if (isEv != null && isEv) {
+                            spot = parkingSpotDao.findNearestAvailableEvSpot();
+                        }
+                        
+                        if (spot == null) {
+                            spot = parkingSpotDao.findNearestAvailableSpot();
+                        }
+
+                        String allocatedSpotStr = "만차 (빈자리 없음)";
+
+                        if (spot != null) {
+                            parkingSpotDao.allocateSpot(spot.getSpotId(), newLog.getParkingLogId());
+                            char rowChar = (char) ('A' + spot.getParkingRow() - 1);
+                            allocatedSpotStr = "지하 " + spot.getParkingFloor() + "층: " + rowChar + "-" + spot.getParkingColumn();
+                            
+                            if (isEv != null && isEv && spot.getParkingFloor() == 1) {
+                                allocatedSpotStr += " ⚡ (전기차 전용 구역)";
+                            }
+                        }
+
+                        entryTimeStr = formatDateTime(LocalDateTime.now());
+                        // 💡 OcrResponse 생성자 순서 변경
+                        return new OcrResponse(finalResult, finalResult, debugImages, country, isEv, entryTimeStr, null, isMem, 0, newLog.getParkingLogId(), null, allocatedSpotStr);
+                    }
+                }
+                
+                // ============================== [ 출차 로직 ] ==============================
+                else if (type.equals("EXIT")) {
+                    ParkingLogDto log = parkingLogDao.selectRecentEntryLog(finalResult);
+                    if (log == null) {
+                        // 💡 OcrResponse 생성자 순서 변경
+                        return new OcrResponse(finalResult, "입차 기록이 없습니다.", debugImages, country, isEv, null, null, false, 0, null, null, null);
+                    }
+
+                    Long memId = null;
+                    isMember = (memDao.checkMemberVehicle(finalResult) > 0);
+                    if (isMember) {
+                        memId = memDao.getMemIdByVehicle(finalResult);
+                    }
+
+                    boolean hasClinicVisit = (receiptDao.checkClinicVisit(finalResult) > 0);
+                    LocalDateTime now = LocalDateTime.now();
+                    long totalMin = Duration.between(log.getEntryTime(), now).toMinutes();
+                    
+                    int feeToPay = calculateFee(totalMin, isMember, hasClinicVisit);
+
+                    StringBuilder msgBuilder = new StringBuilder();
+                    if (hasClinicVisit) msgBuilder.append("[진료할인 적용] ");
+                    else if (isMember) msgBuilder.append("[회원할인 적용] ");
+
+                    if (feeToPay == 0) {
+                        log.setExitTime(now);
+                        log.setIsMember(isMember);
+                        log.setParkingFee(0); 
+                        parkingLogDao.updateExitLog(log);
+                        parkingSpotDao.freeSpotByLogId(log.getParkingLogId());
+                        
+                        msgBuilder.append("무료 주차/정산 완료. 안녕히 가십시오.");
+                        // 💡 OcrResponse 생성자 순서 변경
+                        return new OcrResponse(finalResult, msgBuilder.toString(), debugImages, 
+                                country, isEv, formatDateTime(log.getEntryTime()), formatDateTime(now), 
+                                isMember, 0, log.getParkingLogId(), memId, null);
+                    } 
+                    else {
+                        msgBuilder.append("결제가 필요합니다.");
+                        // 💡 OcrResponse 생성자 순서 변경
+                        return new OcrResponse(finalResult, msgBuilder.toString(), debugImages,
+                                country, isEv, formatDateTime(log.getEntryTime()), formatDateTime(now), 
+                                isMember, feeToPay, log.getParkingLogId(), memId, null);
+                    }
+                }
+            }
+            // 💡 OcrResponse 생성자 순서 변경
+            return new OcrResponse(finalResult, finalResult, debugImages, country, isEv, entryTimeStr, exitTimeStr, isMember, parkingFee, null, null, null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 💡 OcrResponse 생성자 순서 변경 (에러 시 기본값 세팅)
+            return new OcrResponse("에러", "에러", debugImages, "UNKNOWN", false, "에러", "에러", false, -1, null, null, null);
+        }
+    }
+
+    private int calculateFee(long minutes, boolean isMember, boolean hasClinicVisit) {
+        int freeMinutes = 30;
+        if (hasClinicVisit) freeMinutes += 120;
+        if (minutes <= freeMinutes) return 0;
+
+        long chargeMinutes = minutes - freeMinutes;
+        int unit = (int) Math.ceil(chargeMinutes / 30.0);
+        int rate = isMember ? 1000 : 2000;
+        int totalAmount = unit * rate;
+
+        long days = (minutes / (24 * 60)) + 1;
+        int dailyLimit = isMember ? 15000 : 30000;
+        return Math.min(totalAmount, (int)(days * dailyLimit));
+    }
+
+    private boolean isValidResult(String text) {
+        return text != null && !text.equals("인식실패") && !text.contains("에러") && !text.trim().isEmpty();
+    }
+
+    private String formatDateTime(LocalDateTime time) {
+        return time.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+    
+    private String imageToBase64(BufferedImage image) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", bos);
+        return Base64.getEncoder().encodeToString(bos.toByteArray());
+    }
+}
+
+// ====================================================================================================
+
+/*package com.mbc.fin1.service;
+
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -225,7 +480,7 @@ public class OcrService {
         ImageIO.write(image, "png", bos);
         return Base64.getEncoder().encodeToString(bos.toByteArray());
     }
-}
+}*/
 
 // ====================================================================================================
 

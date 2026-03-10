@@ -60,14 +60,14 @@ CREATE TABLE member_vehicle (
 );
 -- 주차 기록
 CREATE TABLE parking_log (
-    parking_log_id SERIAL PRIMARY KEY,				-- PK
-    vehicle_num VARCHAR(20) NOT NULL,				-- 차량 번호 (OCR 결과)
-    license_plate_country VARCHAR(10) DEFAULT 'KR',	-- 국가코드 (한국KR, 말레이시아MY 등)
-    is_ev_license_plate BOOLEAN DEFAULT FALSE,		-- 하늘색 번호판 여부
-    entry_time TIMESTAMP NOT NULL DEFAULT now(),	-- 주차 시작 시간
-    exit_time TIMESTAMP,							-- 주차 종료 시간
-    is_member BOOLEAN NOT NULL DEFAULT FALSE,		-- 회원 여부
-    parking_fee INTEGER NOT NULL DEFAULT 0			-- 주차 요금
+    parking_log_id SERIAL PRIMARY KEY,					-- PK
+    vehicle_num VARCHAR(20) NOT NULL,					-- 차량 번호 (OCR 결과)
+    license_plate_country VARCHAR(10) DEFAULT 'KOR',	-- 국가코드 (한국KOR, 말레이시아MYS, 중국CHN, 브라질BRA 등)
+    is_ev_license_plate BOOLEAN DEFAULT FALSE,			-- 전기차(하늘색 번호판) 여부
+    entry_time TIMESTAMP NOT NULL DEFAULT now(),		-- 주차 시작 시간
+    exit_time TIMESTAMP,								-- 주차 종료 시간
+    is_member BOOLEAN NOT NULL DEFAULT FALSE,			-- 회원 여부
+    parking_fee INTEGER NOT NULL DEFAULT 0				-- 회원 여부에 따른 주차 요금
 );
 -- 주차장 구역
 CREATE TABLE parking_spot (
@@ -84,9 +84,9 @@ CREATE TABLE ev_charger (
     ev_charger_id SERIAL PRIMARY KEY,							-- PK
     parking_spot_id INTEGER UNIQUE NOT NULL
         REFERENCES parking_spot(parking_spot_id),				-- FK (parking_spot)
-	ev_charger_type VARCHAR(20) NOT NULL,						-- 충전기 종류 (급속, 중속, 완속)
-    ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY',	-- 충전기 상태 (STANDBY, CHARGING, ERROR)
-    ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE        		-- 충전기 전원
+	ev_charger_type VARCHAR(20) NOT NULL,						-- 전기차 충전기 종류 (급속, 중속, 완속)
+    ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY',	-- 전기차 충전기 상태 (STANDBY, CHARGING, ERROR)
+    ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE        		-- 전기차 충전기 전원
 );
 -- 전기차 충전 기록
 CREATE TABLE ev_charging_log (
