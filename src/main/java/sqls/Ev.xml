@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.fin1.dao.EvDao">
+
+	<!-- 전기차 충전 시작 -->
+    <insert id="startChargingLog" parameterType="com.mbc.fin1.dto.EvChargingLogDto" useGeneratedKeys="true" keyProperty="evChargingLogId">
+        INSERT INTO ev_charging_log (ev_charger_id, parking_log_id, ev_charging_start_time)
+        VALUES (#{evChargerId}, #{parkingLogId}, NOW())
+    </insert>
+
+	<!-- 전기차 충전기 상태 변경 -->
+    <update id="updateChargerState">
+        UPDATE ev_charger 
+        SET ev_charger_state = #{state} 
+        WHERE ev_charger_id = #{evChargerId}
+    </update>
+
+	<!-- 전기차 충전 종료 -->
+    <update id="endChargingLog" parameterType="com.mbc.fin1.dto.EvChargingLogDto">
+        UPDATE ev_charging_log 
+        SET ev_charging_end_time = NOW(),
+            ev_charging_fee = #{evChargingFee},
+            ev_charging_end_reason = #{evChargingEndReason}
+        WHERE parking_log_id = #{parkingLogId} AND ev_charging_end_time IS NULL
+    </update>
+
+	<!-- 무슨 주차 자리에 어떤 전기차 충전기가 설치되어 있는지 -->
+    <select id="getEvChargerBySpotId" parameterType="int" resultType="com.mbc.fin1.dto.EvChargerDto">
+        SELECT 
+            ev_charger_id AS evChargerId,
+            parking_spot_id AS parkingSpotId,
+            ev_charger_type AS evChargerType,
+            ev_charger_state AS evChargerState,
+            ev_charger_power AS evChargerPower
+        FROM ev_charger
+        WHERE parking_spot_id = #{parkingSpotId}
+    </select>
+
+</mapper>
