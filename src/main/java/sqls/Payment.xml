@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.fin1.dao.PaymentDao">
+
+	<!-- 결제 정보 저장 -->
+    <insert id="insertPayment" parameterType="com.mbc.fin1.dto.PaymentDto">
+        INSERT INTO payment (parking_log_id, mem_id, amount, pay_method, pay_date)
+        VALUES (#{parkingLogId}, #{memId}, #{amount}, #{payMethod}, now())
+    </insert>
+
+    <!-- 진료 완료 여부 확인 (당일 진료 완료 시 주차 2시간 무료) -->
+    <select id="checkClinicVisit" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM reservation r
+        JOIN member_vehicle v ON r.mem_id = v.mem_id
+        WHERE v.vehicle_num = #{vehicleNum}
+			AND r.reservation_status = '완료'
+			AND r.reservation_date = CAST(TO_CHAR(NOW(), 'YYYYMMDD') AS INTEGER)
+    </select>
+
+</mapper>

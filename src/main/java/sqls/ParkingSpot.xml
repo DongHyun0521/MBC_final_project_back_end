@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.fin1.dao.ParkingSpotDao">
+
+	<!-- 입구로부터 가장 가까운 주차 자리 찾기 -->
+    <select id="findNearestAvailableSpot" resultType="com.mbc.fin1.dto.ParkingSpotDto">
+        SELECT 
+            parking_spot_id AS spotId, 
+            parking_log_id AS parkingLogId, 
+            parking_floor AS parkingFloor, 
+            parking_row AS parkingRow, 
+            parking_column AS parkingColumn, 
+            is_parked AS isParked
+        FROM parking_spot
+        WHERE is_parked = false
+        ORDER BY parking_floor ASC, (parking_row + parking_column) ASC, parking_row ASC
+        LIMIT 1
+    </select>
+
+	<!-- 주차 자리 매핑하기 -->
+    <update id="allocateSpot">
+        UPDATE parking_spot 
+        SET is_parked = true, 
+            parking_log_id = #{parkingLogId} 
+        WHERE parking_spot_id = #{spotId}
+    </update>
+
+	<!-- 주차 자리 출차하기 -->
+    <update id="freeSpotByLogId">
+        UPDATE parking_spot 
+        SET is_parked = false, 
+            parking_log_id = NULL 
+        WHERE parking_log_id = #{parkingLogId}
+    </update>
+    
+    <!-- 주차 자리 전체 출력하기 -->
+    <select id="findAllSpots" resultType="com.mbc.fin1.dto.ParkingSpotDto">
+        SELECT 
+            s.parking_spot_id AS spotId, 
+            s.parking_log_id AS parkingLogId, 
+            s.parking_floor AS parkingFloor, 
+            s.parking_row AS parkingRow, 
+            s.parking_column AS parkingColumn, 
+            s.is_parked AS isParked,
+            l.vehicle_num AS vehicleNum,  l.entry_time AS entryTime     FROM parking_spot s
+        LEFT JOIN parking_log l ON s.parking_log_id = l.parking_log_id
+        ORDER BY s.parking_floor ASC, s.parking_row ASC, s.parking_column ASC
+    </select>
+
+</mapper>
