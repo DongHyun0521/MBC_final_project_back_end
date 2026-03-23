@@ -8,6 +8,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.mbc.fin1.dao.AdminDao;
 import com.mbc.fin1.service.MedService;
+import com.mbc.fin1.service.ParkingPredictionService;
+
+import jakarta.annotation.PostConstruct;
 
 @Component
 public class MyScheduler {
@@ -17,6 +20,9 @@ public class MyScheduler {
     
     @Autowired
     private MedService medService;
+    
+    @Autowired
+    private ParkingPredictionService predictionService;
     
     /*
     초 : 0~59     분 : 0~59     시 : 0~23
@@ -47,5 +53,19 @@ public class MyScheduler {
         } catch (Exception e) {
             System.err.println("=> Scheduler Error: " + e.getMessage());
         }
+    }
+    
+    // 🌟 서버가 켜지자마자 알람 무시하고 일단 1번 강제 실행!
+    @PostConstruct
+    public void runOnStartup() {
+        System.out.println("🚀 [서버 기동] 스케줄러 대기 전에 최초 1회 예측을 즉시 실행합니다!");
+        predictionService.predictHalfHourlyParking();
+    }
+
+    // ⏰ [수정] 매시간 정각(00분)과 30분마다 알아서 실행
+    @Scheduled(cron = "0 0,30 * * * *")
+    public void runParkingPrediction() {
+        System.out.println("⏰ [스케줄러 작동] 30분 단위 주차 예측 AI를 호출합니다...");
+        predictionService.predictHalfHourlyParking(); // 💡 30분 단위 메서드로 변경
     }
 }

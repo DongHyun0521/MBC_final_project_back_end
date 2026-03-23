@@ -60,13 +60,12 @@
         	AND reservation_status = '예약'
     </update>
     
-    <!-- 미방문 예약 찾기 (예약시간+30분) -->
+    <!-- 미방문 예약 찾기 (예약시간+30분 경과 시 자동 미방문 처리) -->
     <select id="findNoShowReservations" resultType="long">
         SELECT reservation_id
         FROM reservation
         WHERE reservation_status = '예약'
-        AND TO_TIMESTAMP(reservation_date || ' ' || CAST(reservation_time AS TIME), 'YYYYMMDD HH24:MI:SS') 
-			&lt; (NOW() - INTERVAL '30 minutes')
+        AND (reservation_date + reservation_time) &lt; (NOW() - INTERVAL '30 minutes')
     </select>
     
     <!-- 자동으로 예약 미방문으로 바꾸기 (예약->미방문) -->

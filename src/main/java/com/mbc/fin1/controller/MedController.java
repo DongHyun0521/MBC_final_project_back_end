@@ -48,62 +48,42 @@ public class MedController {
     @PostMapping("/reservation")
     public String makeReservation(@RequestBody ReservationDto resDto, HttpSession session) {
        System.out.println("=> MedController: makeReservation | "+ new Date());
-       // 1. 로그인 상태 & 회원인지 확인
+       
        String loginId = (String) session.getAttribute("loginId");
        MemDto member = memService.getMemberInfo(loginId);
        if (loginId == null || member == null) return "fail";
        
        try {
-    	   List<Map<String, Object>> schedule = medService.getReservationsByDoctor(resDto.getDoctorId());	// 특정 의사 스케줄 목록
-           String reqDate = String.valueOf(resDto.getReservationDate());									// YYYYMMDD
-           String reqTime = resDto.getReservationTime().toLocalTime().toString().substring(0, 5);			// hh:mm
+           List<Map<String, Object>> schedule = medService.getReservationsByDoctor(resDto.getDoctorId());
+           
+           LocalDate targetDate = resDto.getReservationDate();
+           LocalTime targetTime = resDto.getReservationTime();
+           LocalDateTime targetDateTime = LocalDateTime.of(targetDate, targetTime);
 
-           DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-           LocalDate targetDate = LocalDate.parse(reqDate, dateFormatter);			// YYYYMMDD -> YYYY년 MM월 DD일
-           LocalTime targetTime = LocalTime.parse(reqTime);							// hh:mm -> 오전/후 hh시 mm분
-           LocalDateTime targetDateTime = LocalDateTime.of(targetDate, targetTime);	// YYYY년 MM월 DD일 + 오전/후 hh시 mm분
-
-           // .plusMinutes(n) .plusHours(n) .plusDays(n) .plusWeeks(n) .plusMonths(n) .plusYears(n)
-           LocalDateTime minBookingTime = LocalDateTime.now().plusHours(1);	// 현재시간 + 1시간
+           // 현재시간 기준 1시간 이후부터 예약 가능
+           LocalDateTime minBookingTime = LocalDateTime.now().plusHours(1);	
            if (targetDateTime.isBefore(minBookingTime)) return "soon";
            
            for (Map<String, Object> reserved : schedule) {
-        	   String status = String.valueOf(reserved.get("reservation_status"));
-        	   if (!"예약".equals(status)) continue;	// 예약취소 상태 무시
+               String status = String.valueOf(reserved.get("reservation_status"));
+               if (!"예약".equals(status)) continue;
 
-        	   Object dbDateObj = reserved.get("reservation_date");
-        	   Object dbTimeObj = reserved.get("reservation_time");
+               Object dbDateObj = reserved.get("reservation_date");
+               Object dbTimeObj = reserved.get("reservation_time");
 
-        	   if (dbDateObj != null && dbTimeObj != null) {
-        		   // DB 데이터 날짜 정규화
-        		   String dbDate = String.valueOf(dbDateObj).trim();
-        		   // ISO 형태 : YYYY-MM-DDThh:mm:ss -> YYYY-MM-DD
-        		   if (dbDate.contains("T")) dbDate = dbDate.split("T")[0];
-        		   // DB 형태 : YYYY-MM-DD hh:mm:ss -> YYYY-MM-DD
-        		   if (dbDate.contains(" ")) dbDate = dbDate.split(" ")[0];
-        		   // YYYY-MM-DD -> YYYYMMDD
-        		   dbDate = dbDate.replaceAll("-", "");
+               if (dbDateObj != null && dbTimeObj != null) {
+                   LocalDate dbDate = (dbDateObj instanceof java.sql.Date) ? ((java.sql.Date) dbDateObj).toLocalDate() : LocalDate.parse(dbDateObj.toString());
+                   LocalTime dbTime = (dbTimeObj instanceof java.sql.Time) ? ((java.sql.Time) dbTimeObj).toLocalTime() : LocalTime.parse(dbTimeObj.toString());
 
-        		   // DB 데이터 시간 정규화
-        		   String dbTime = String.valueOf(dbTimeObj).trim();
-        		   // ISO 형태 : YYYY-MM-DDThh:mm:ss -> hh:mm:ss
-        		   if (dbTime.contains("T")) dbTime = dbTime.split("T")[1];
-        		   // DB 형태 : YYYY-MM-DD hh:mm:ss -> hh:mm:ss
-        		   if (dbTime.contains(" ")) dbTime = dbTime.split(" ")[1];
-        		   // hh:mm:ss -> hh:mm
-        		   dbTime = dbTime.substring(0, 5);
-
-        		   // 이미 예약된 시간
-        		   if (dbDate.equals(reqDate) && dbTime.equals(reqTime)) return "duplicate";
-        	   }
+                   if (dbDate.equals(targetDate) && dbTime.equals(targetTime)) return "duplicate";
+               }
            }
-           // 예약 가능
            resDto.setMemId(member.getMemId());
            medService.createReservation(resDto);
            return "success";
        } catch (Exception e) {
-    	   e.printStackTrace();
-    	   return "fail";
+           e.printStackTrace();
+           return "fail";
        }
     }
     

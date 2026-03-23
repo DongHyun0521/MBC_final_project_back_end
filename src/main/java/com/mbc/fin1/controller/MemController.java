@@ -147,19 +147,6 @@ public class MemController {
 	}
 
 	// 내 차량 추가
-	/*
-    @PostMapping("/vehiRegi")
-    public String addVehicle(@RequestBody MemberVehicleDto vehicleDto, HttpSession session) {
-    	System.out.println("=> MemController: addVehicle | "+ new Date());
-    	String loginId = (String) session.getAttribute("loginId");
-        MemDto member = memService.getMemberInfo(loginId);
-        if (loginId == null || member == null) return "fail";
-        
-        vehicleDto.setMemId(member.getMemId());
-        memService.addVehi(vehicleDto);
-        return "success";
-    }
-    */
 	@PostMapping("/vehiRegi")
 	public String addVehicle(@RequestBody MemberVehicleDto vehicleDto, HttpSession session) {
 		System.out.println("=> MemController: addVehicle | " + new Date());

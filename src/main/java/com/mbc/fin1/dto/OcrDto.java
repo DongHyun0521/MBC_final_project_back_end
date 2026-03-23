@@ -1,4 +1,4 @@
-// mbcFinalProject1 - com.mbc.fin1.dto - OcrResponse.java
+// mbcFinalProject1 - com.mbc.fin1.dto - OcrDto.java
 package com.mbc.fin1.dto;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OcrResponse {
+public class OcrDto {
     private String resultText;        	// 차량 번호
     private String rawText;           	// 원본 텍스트
     private List<String> debugImages;	// 이미지
@@ -26,7 +26,7 @@ public class OcrResponse {
     private String allocatedSpot;       // 배정된 주차 자리 (예: "1층 1행 1열")
 
     // Service 코드에서 에러 안 나도록 만들어둔 맞춤형 생성자
-    public OcrResponse(String resultText, String rawText, List<String> debugImages, String country, 
+    public OcrDto(String resultText, String rawText, List<String> debugImages, String country, 
     		Boolean isEv, String entryTime, String exitTime, Boolean isMember, 
     		Integer parkingFee, Long parkingLogId, Long memId, String allocatedSpot) {
 		this.resultText = resultText;

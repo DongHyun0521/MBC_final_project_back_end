@@ -1,23 +1,25 @@
 
-DROP TABLE IF EXISTS member_vehicle;	-- 
-DROP TABLE IF EXISTS reservation;		-- 
-DROP TABLE IF EXISTS receipt;			-- 
 
-DROP TABLE IF EXISTS med_staff;			-- 
-DROP TABLE IF EXISTS med_dept;			-- 
+DROP TABLE IF EXISTS ev_charging_log;		-- 충전기록 (충전기, 주차기록 참조)
+DROP TABLE IF EXISTS receipt;				-- 영수증 (주차기록, 회원 참조)
+DROP TABLE IF EXISTS reservation;			-- 진료예약 (회원, 진료부서, 의료진 참조)
+DROP TABLE IF EXISTS voc;					-- 고객의소리 (회원, 행정직 참조)
+DROP TABLE IF EXISTS notice;				-- 공지사항 (행정직 참조)
+DROP TABLE IF EXISTS faq;					-- FAQ (행정직 참조)
+DROP TABLE IF EXISTS health_story;			-- 건강이야기 (행정직 참조)
+DROP TABLE IF EXISTS payment_method;		-- 결제수단 (회원 참조)
+DROP TABLE IF EXISTS member_vehicle;		-- 회원차량 (회원 참조)
 
-DROP TABLE IF EXISTS notice;			-- 
-DROP TABLE IF EXISTS faq;				-- 
-DROP TABLE IF EXISTS voc;				-- 
-DROP TABLE IF EXISTS health_story;		-- 
+DROP TABLE IF EXISTS ev_charger;	-- 충전기 (주차구역 참조 / 위에서 충전기록이 지워졌으므로 안전)
+DROP TABLE IF EXISTS med_staff;		-- 의료진 (회원, 진료부서, 주차구역 참조 / 위에서 예약이 지워졌으므로 안전)
+DROP TABLE IF EXISTS admin_staff;	-- 행정직 (회원, 행정부서, 주차구역 참조 / 위에서 게시판류가 지워졌으므로 안전)
 
-DROP TABLE IF EXISTS admin_staff;		-- 
-DROP TABLE IF EXISTS admin_dept;		-- 
+DROP TABLE IF EXISTS parking_spot;	-- 주차구역 (주차기록 참조 / 위에서 의료진,행정직,충전기가 지워졌으므로 안전)
+DROP TABLE IF EXISTS med_dept;		-- 진료부서 (위에서 의료진,예약이 지워졌으므로 안전)
+DROP TABLE IF EXISTS admin_dept;	-- 행정부서 (위에서 행정직이 지워졌으므로 안전)
 
-DROP TABLE IF EXISTS parking_spot;		-- 
-DROP TABLE IF EXISTS parking_log;		-- 
-
-DROP TABLE IF EXISTS mem;				-- 
+DROP TABLE IF EXISTS parking_log;	-- 주차기록 (모든 주차 관련 자식들이 지워졌으므로 안전)
+DROP TABLE IF EXISTS mem;			-- 회원 (모든 회원 관련 자식들이 지워졌으므로 안전)
 
 -- ==================================================
 
@@ -102,7 +104,7 @@ CREATE TABLE ev_charging_log (
 );
 -- 요금 결제 기록 (영수증)
 CREATE TABLE receipt(
-    receipt_id SERIAL PRIMARY KEY,						-- PK
+    receipt_id SERIAL PRIMARY KEY,					-- PK
     parking_log_id INTEGER NOT NULL
 		REFERENCES parking_log(parking_log_id),		-- FK (parking_log)
     mem_id INTEGER
@@ -117,24 +119,70 @@ CREATE TABLE receipt(
 -- ==================================================
 
 -- 머신러닝: 주차 대수 예측
+DROP TABLE IF EXISTS parking_prediction;
 CREATE TABLE parking_prediction (
-    parking_prediction_id SERIAL PRIMARY KEY,		-- PK
-    target_date DATE UNIQUE NOT NULL,				-- 예측 대상 날짜
+    parking_prediction_id SERIAL PRIMARY KEY,			-- PK
+    target_datetime TIMESTAMP UNIQUE NOT NULL,			-- 예측 대상 날짜+시간
     predicted_time TIMESTAMP NOT NULL DEFAULT now(),	-- 예측 수행 시간
-    predicted_cars INTEGER NOT NULL,				-- 예측 주차 대수
+    predicted_cars INTEGER NOT NULL,					-- 예측 주차 대수
     
-    total_reservations INTEGER DEFAULT 0,	-- 대상 날짜의 총 진료 예약 건수
+    forecast_type VARCHAR(10) NOT NULL,	-- 모델(vshort, short, mid)
     
-    weather_status VARCHAR(50),					-- 날씨 (맑음, 비, 눈 등)
-    is_extreme_weather BOOLEAN DEFAULT FALSE,	-- 악천후 여부
+    temp NUMERIC(4, 2),						-- 기온
+    rainfall_mm NUMERIC(5, 2) DEFAULT 0.0,	-- 강수량
+    wind_speed NUMERIC(4, 1) DEFAULT 2.0,	-- 풍속
+    humidity INTEGER DEFAULT 50,			-- 습도
+    snowfall_cm NUMERIC(5, 2) DEFAULT 0.0,	-- 적설량
+
+    pm10 NUMERIC(5, 2),				-- 미세먼지
+	pm25 NUMERIC(5, 2),				-- 초미세먼지
+	pm10_grade INTEGER DEFAULT 1,	-- 미세먼지 등급
+    pm25_grade INTEGER DEFAULT 1,	-- 초미세먼지 등급
     
-    pm_status VARCHAR(20),	-- 미세먼지 등급 (좋음, 보통, 나쁨 등)
+    is_holiday BOOLEAN DEFAULT FALSE,	-- TRUE:주말/공휴일
     
-    is_holiday BOOLEAN DEFAULT FALSE,			-- 주말/공휴일 여부
-    is_day_after_holiday BOOLEAN DEFAULT FALSE,	-- 연휴 다음날 여부
-    
-    epidemic_warning VARCHAR(100)	-- 감염병 유행 알림 (특이사항 없음, 독감 유행주의보 발령 등)
+    res_internal INTEGER DEFAULT 0,		-- 내과 예약 수
+    res_orthopedics INTEGER DEFAULT 0,	-- 정형외과 예약 수
+	res_neurosurgery INTEGER DEFAULT 0,	-- 신경외과 예약 수
+    res_pediatrics INTEGER DEFAULT 0,	-- 소아청소년과 예약 수
+    res_ent INTEGER DEFAULT 0,          -- 이비인후과
+	res_dermatology INTEGER DEFAULT 0,  -- 피부과
+	res_ophthalmology INTEGER DEFAULT 0,-- 안과
+	res_dentistry INTEGER DEFAULT 0,    -- 치과
+	res_psychiatry INTEGER DEFAULT 0,   -- 정신건강의학과
+    res_total INTEGER DEFAULT 0			-- 전체 예약 수
 );
+DELETE FROM parking_prediction;
+SELECT * FROM parking_prediction;
+
+-- 2026년 공휴일 테이블
+DROP TABLE IF EXISTS holidays;
+CREATE TABLE IF NOT EXISTS holidays (
+    holiday_date DATE PRIMARY KEY,		-- PK
+    holiday_name VARCHAR(50) NOT NULL	-- 공휴일 이름
+);
+DELETE FROM holidays;
+INSERT INTO holidays (holiday_date, holiday_name) VALUES
+	('2026-01-01', '신정'),
+	('2026-02-16', '설날'),					-- 설날 연휴
+	('2026-02-17', '설날'),
+	('2026-02-18', '설날'),					-- 설날 연휴
+	('2026-03-01', '삼일절'),
+	('2026-03-02', '대체공휴일'),			-- 삼일절
+	('2026-05-05', '어린이날'),
+	('2026-05-24', '부처님오신날'),			-- 석가탄신일
+	('2026-05-25', '대체공휴일'),			-- 부처님오신날
+	('2026-06-03', '제9회_전국동시지방선거'),	-- 2026년 6월 3일 지방선거
+	('2026-06-06', '현충일'),
+	('2026-08-15', '광복절'),
+	('2026-09-24', '추석'),					-- 추석 연휴
+	('2026-09-25', '추석'),
+	('2026-09-26', '추석'),					-- 추석 연휴
+	('2026-09-28', '대체공휴일'),			-- 추석
+	('2026-10-03', '개천절'),
+	('2026-10-09', '한글날'),
+	('2026-12-25', '기독탄신일');			-- 크리스마스
+SELECT * FROM holidays;
 
 -- ==================================================
 
@@ -176,8 +224,8 @@ CREATE TABLE reservation (
 		REFERENCES med_dept(med_dept_id),	-- FK
 	doctor_id INTEGER NOT NULL
 		REFERENCES med_staff(med_staff_id),	-- FK
-	reservation_date INTEGER NOT NULL,						-- 예약 날짜
-	reservation_time VARCHAR(30) NOT NULL,					-- 예약 시간
+	reservation_date DATE NOT NULL,						-- 예약 날짜
+	reservation_time TIME NOT NULL,					-- 예약 시간
 	reservation_type VARCHAR(20) NOT NULL,					-- 예약 종류
 	visit_type VARCHAR(20) NOT NULL DEFAULT '초진',			-- 초진/재진
 	reservation_status VARCHAR(20) NOT NULL DEFAULT '예약',	-- 예약 상태
@@ -264,48 +312,68 @@ CREATE TABLE health_story (
 	del INTEGER NOT NULL DEFAULT 0					-- 삭제 여부
 );
 
--- ==================================================
 
-DELETE FROM reservation;
-DELETE FROM voc;
-DELETE FROM notice;
-DELETE FROM faq;
-DELETE FROM health_story;
-DELETE FROM member_vehicle;
-DELETE FROM receipt;
-
-DELETE FROM med_staff;
-DELETE FROM admin_staff;
-DELETE FROM parking_spot;
-
-DELETE FROM parking_log;
-DELETE FROM med_dept;
-DELETE FROM admin_dept;
-DELETE FROM mem;
 
 -- ==================================================
 
-SELECT * FROM mem;				-- 회원
-SELECT * FROM med_staff;		-- 의료진
-SELECT * FROM admin_staff;		-- 행정 직원
 
-SELECT * FROM med_dept;			-- 의료 부서 (미리 INSERT)
-SELECT * FROM admin_dept;		-- 행정 부서 (미리 INSERT)
+DELETE FROM ev_charging_log;	-- 전기차 충전 기록
+DELETE FROM receipt;			-- 요금 결제 기록 (영수증)
+DELETE FROM reservation;		-- 진료 예약
+DELETE FROM voc;				-- 고객의 소리
+DELETE FROM notice;				-- 공지사항
+DELETE FROM faq;				-- FAQ
+DELETE FROM health_story;		-- 건강 이야기
+DELETE FROM payment_method;		-- 결제 수단
+DELETE FROM member_vehicle;		-- 회원 차량 정보
 
-SELECT * FROM member_vehicle;	-- 회원 차량
+DELETE FROM ev_charger;		-- 전기차 충전기 (주차구역을 참조하므로 먼저 지워야 함)
+DELETE FROM med_staff;		-- 의료진 (진료부서와 주차구역을 참조)
+DELETE FROM admin_staff;	-- 행정직 (행정부서와 주차구역을 참조)
 
-SELECT * FROM parking_log;		-- 주차 기록
-SELECT * FROM parking_spot;		-- 주차 위치 (미리 INSERT)
-SELECT * FROM receipt;			-- 결제
+DELETE FROM parking_spot;	-- 주차장 구역 (주차기록을 참조)
+DELETE FROM med_dept;		-- 의료 부서
+DELETE FROM admin_dept;		-- 행정 부서
 
-SELECT * FROM reservation;		-- 예약
+DELETE FROM parking_log;	-- 주차 기록 (자식들이 다 지워졌으니 안전하게 삭제 가능)
+DELETE FROM mem;			-- 회원 정보 (마지막으로 삭제)
 
-SELECT * FROM voc;				-- 고객의소리
-SELECT * FROM notice;			-- 공지사항
-SELECT * FROM faq;				-- FAQ
-SELECT * FROM health_story;		-- 건강이야기
+DELETE FROM parking_prediction;	-- 머신러닝 주차 예측 (다른 테이블과 엮이지 않음)
+
+
 
 -- ==================================================
+
+
+
+SELECT * FROM mem;			-- 회원 정보 (모든 예약, 결제의 주체)
+SELECT * FROM med_dept;		-- 의료 부서 (내과, 안과 등)
+SELECT * FROM admin_dept;	-- 행정 부서 (총무팀, 주차관리팀 등)
+SELECT * FROM parking_spot;	-- 주차장 구역 (A1, B2 등 물리적 공간)
+
+SELECT * FROM member_vehicle;	-- 회원 등록 차량
+SELECT * FROM payment_method;	-- 회원 결제 수단
+SELECT * FROM med_staff;		-- 의료진 (어느 부서 소속인지 확인)
+SELECT * FROM admin_staff;		-- 행정직 (어느 부서 소속인지 확인)
+SELECT * FROM ev_charger;		-- 전기차 충전기 (어느 주차 구역에 있는지 확인)
+
+SELECT * FROM reservation;	-- 진료 예약 (누가, 어느 의사에게, 언제 예약했나)
+SELECT * FROM parking_log;	-- 주차 기록 (입/출차 기록 및 번호판 OCR 결과)
+
+SELECT * FROM ev_charging_log;	-- 전기차 충전 기록 (어떤 충전기에서 얼마나 썼나)
+SELECT * FROM receipt;			-- 요금 결제 영수증 (주차/충전 요금 최종 정산)
+
+SELECT * FROM voc;					-- 고객의 소리 (Q&A)
+SELECT * FROM notice;				-- 공지사항
+SELECT * FROM faq;					-- 자주 묻는 질문
+SELECT * FROM health_story;			-- 건강 이야기
+SELECT * FROM parking_prediction;	-- 머신러닝 주차 예측 결과 (독립 데이터)
+
+
+
+-- ==================================================
+
+
 
 INSERT INTO med_dept (med_dept_name, dept_location, dept_phone_number) VALUES 
 	('내과', '본관 102호', '02-1111-1112'),
@@ -328,8 +396,25 @@ INSERT INTO admin_dept (admin_dept_name, dept_location, dept_phone_number) VALUE
 	('의무기록팀', '별관 105호', '02-2222-2228'),
 	('홍보팀', '본관 501호', '02-2222-2229'),
 	('보안팀', '본관 100호(보안실)', '02-2222-2230');
-	
+
+
+
 -- ==================================================
+
+
+
+-- 주차 자리
+INSERT INTO parking_spot (parking_floor, parking_row, parking_column)
+SELECT f, r, c
+FROM generate_series(1, 3) AS f,     -- 1~3층
+     generate_series(1, 4) AS r,     -- 1~4행
+     generate_series(1, 10) AS c;    -- 1~10열
+
+
+
+-- ==================================================
+
+
 
 -- 회원 1
 INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
@@ -343,7 +428,11 @@ VALUES ('mem456', 'Pass123!', '이회원', 19850728, 2, '서울시 중구 XX빌�
 INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
 VALUES ('mem789', 'Pass123!', '박회원', 20010521, 1, '서울시 서초구 OO오피스텔', '1104호', '010-0324-5843', 'user03@gmail.com');
 
+
+
 -- ==================================================
+
+
 
 -- 행정:원무 1
 WITH inserted_admin AS (
@@ -375,7 +464,11 @@ INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
 SELECT mem_id, '사원', 'Q19450235', '재직', 3
 FROM inserted_admin;
 
+
+
 -- ==================================================
+
+
 
 -- 행정:홍보 1
 WITH inserted_admin AS (
@@ -407,7 +500,11 @@ INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
 SELECT mem_id, '팀장', 'M10495029', '재직', 7
 FROM inserted_admin;
 
+
+
 -- ==================================================
+
+
 
 WITH inserted_doc AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
@@ -459,20 +556,39 @@ SELECT m.mem_id, '의사', g.gen_license, '재직', g.dept_id
 FROM inserted_mem m
 JOIN gen_doc g ON m.id = g.gen_id;
 
--- ==================================================
 
--- 주차 자리
-INSERT INTO parking_spot (parking_floor, parking_row, parking_column)
-SELECT f, r, c
-FROM generate_series(1, 3) AS f,     -- 1~3층
-     generate_series(1, 4) AS r,     -- 1~4행
-     generate_series(1, 10) AS c;    -- 1~10열
      
 -- ==================================================
 
 
 
+-- 입차: 01가0785
+WITH new_parking AS (
+    INSERT INTO parking_log (vehicle_num, entry_time) 
+    VALUES ('01가0785', now() - INTERVAL '3 hours')
+    RETURNING parking_log_id
+),
+best_spot AS (
+    SELECT parking_spot_id
+    FROM parking_spot
+    WHERE is_parked = FALSE
+    ORDER BY 
+        (parking_row + parking_column) ASC, -- 1순위: 맨해튼 거리가 가장 짧은 곳
+        parking_row ASC,                    -- 2순위: 거리가 같다면 행(row)이 작은 곳 우선
+        parking_column ASC,                 -- 3순위: 행도 같다면 열(column)이 작은 곳 우선
+        parking_floor ASC                   -- 4순위: 층수가 낮은 곳 우선 (선택 사항)
+    LIMIT 1
+)
+UPDATE parking_spot 
+SET parking_log_id = (SELECT parking_log_id FROM new_parking),
+    is_parked = TRUE
+WHERE parking_spot_id = (SELECT parking_spot_id FROM best_spot);
+
+
+
 -- ==================================================
+
+
 
 -- FAQ 병원이용 카테고리 4개마다 10개씩
 INSERT INTO faq (admin_staff_id, category, title, content, write_date) VALUES

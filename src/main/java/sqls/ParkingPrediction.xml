@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mbc.fin1.dao.ParkingPredictionDao">
+
+	<!-- 30분 단위 진료과별 예약 수 가져오기 -->
+    <select id="getTargetTimeReservationStats" resultType="map">
+        SELECT 
+            COUNT(*) AS "resTotal",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '내과' THEN 1 ELSE 0 END), 0) AS "resInternal",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '정형외과' THEN 1 ELSE 0 END), 0) AS "resOrthopedics",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '신경외과' THEN 1 ELSE 0 END), 0) AS "resNeurosurgery",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '소아청소년과' THEN 1 ELSE 0 END), 0) AS "resPediatrics",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '이비인후과' THEN 1 ELSE 0 END), 0) AS "resEnt",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '피부과' THEN 1 ELSE 0 END), 0) AS "resDermatology",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '안과' THEN 1 ELSE 0 END), 0) AS "resOphthalmology",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '치과' THEN 1 ELSE 0 END), 0) AS "resDentistry",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '정신건강의학과' THEN 1 ELSE 0 END), 0) AS "resPsychiatry"
+        FROM reservation r
+        JOIN med_dept d ON r.med_dept_id = d.med_dept_id
+        
+        WHERE r.reservation_date = #{targetDate} 
+          AND r.reservation_time >= #{targetTime}
+          AND r.reservation_time &lt; (CAST(#{targetTime} AS TIME) + INTERVAL '30 minutes')
+          AND r.reservation_status = '예약' 
+    </select>
+    
+    <!-- 일 단위 진료과별 예약 수 가져오기 -->
+    <select id="getDailyReservationStats" resultType="map">
+        SELECT 
+            COUNT(*) AS "resTotal",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '내과' THEN 1 ELSE 0 END), 0) AS "resInternal",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '정형외과' THEN 1 ELSE 0 END), 0) AS "resOrthopedics",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '신경외과' THEN 1 ELSE 0 END), 0) AS "resNeurosurgery",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '소아청소년과' THEN 1 ELSE 0 END), 0) AS "resPediatrics",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '이비인후과' THEN 1 ELSE 0 END), 0) AS "resEnt",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '피부과' THEN 1 ELSE 0 END), 0) AS "resDermatology",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '안과' THEN 1 ELSE 0 END), 0) AS "resOphthalmology",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '치과' THEN 1 ELSE 0 END), 0) AS "resDentistry",
+            COALESCE(SUM(CASE WHEN d.med_dept_name = '정신건강의학과' THEN 1 ELSE 0 END), 0) AS "resPsychiatry"
+        FROM reservation r
+        JOIN med_dept d ON r.med_dept_id = d.med_dept_id
+        WHERE r.reservation_date = #{targetDate} 
+          AND r.reservation_status = '예약' 
+    </select>
+
+	<!-- 주차 수요 예측 결과를 DB에 저장 -->
+    <insert id="upsertPrediction" parameterType="com.mbc.fin1.dto.ParkingPredictionDto">
+        INSERT INTO parking_prediction (
+            target_datetime, predicted_cars, forecast_type,
+            temp, rainfall_mm, wind_speed, humidity, snowfall_cm,
+            pm10, pm25, pm10_grade, pm25_grade,
+            is_holiday, 
+            res_internal, res_orthopedics, res_pediatrics, res_neurosurgery, res_ent, 
+            res_dermatology, res_ophthalmology, res_dentistry, res_psychiatry, res_total
+        ) VALUES (
+            #{targetDatetime}, #{predictedCars}, #{forecastType},
+            #{temp}, #{rainfallMm}, #{windSpeed}, #{humidity}, #{snowfallCm},
+            #{pm10}, #{pm25}, #{pm10Grade}, #{pm25Grade},
+            #{isHoliday}, 
+            #{resInternal}, #{resOrthopedics}, #{resPediatrics}, #{resNeurosurgery}, #{resEnt}, 
+            #{resDermatology}, #{resOphthalmology}, #{resDentistry}, #{resPsychiatry}, #{resTotal}
+        )
+        ON CONFLICT (target_datetime) 
+        DO UPDATE SET 
+            predicted_cars = EXCLUDED.predicted_cars, 
+            forecast_type = EXCLUDED.forecast_type,
+            temp = EXCLUDED.temp, 
+            rainfall_mm = EXCLUDED.rainfall_mm, 
+            wind_speed = EXCLUDED.wind_speed,
+            humidity = EXCLUDED.humidity,
+            snowfall_cm = EXCLUDED.snowfall_cm,
+            pm10 = EXCLUDED.pm10,
+            pm25 = EXCLUDED.pm25,
+            pm10_grade = EXCLUDED.pm10_grade,
+            pm25_grade = EXCLUDED.pm25_grade,
+            predicted_time = now();
+    </insert>
+    
+    <!-- 초단기/단기 입차 그래프 데이터 가져오기 -->
+    <select id="getParkingChartData" resultType="map">
+        SELECT 
+            TO_CHAR(p.target_datetime, 'HH24:MI') AS "time", 
+            COALESCE(ROUND(AVG(p.predicted_cars)), 0) AS "predictedCars", 
+            COALESCE(ROUND(AVG(
+                (SELECT COUNT(*)
+                 FROM parking_log l
+                 WHERE l.entry_time &lt;= p.target_datetime
+                   AND (l.exit_time IS NULL OR l.exit_time > p.target_datetime)
+                )
+            )), 0) AS "actualCars"
+        FROM parking_prediction p
+        WHERE p.target_datetime::date BETWEEN #{startDate} AND #{endDate}
+          AND p.forecast_type != 'mid' GROUP BY TO_CHAR(p.target_datetime, 'HH24:MI')
+        ORDER BY "time" ASC
+    </select>
+    
+    <!-- 중기 입차 그래프 데이터 가져오기 -->
+    <select id="getMidTermChartData" resultType="map">
+        SELECT 
+            TO_CHAR(target_datetime, 'YYYY-MM-DD') AS "date", 
+            predicted_cars AS "predictedCars"
+        FROM parking_prediction
+        WHERE target_datetime::date BETWEEN #{startDate} AND #{endDate}
+          AND forecast_type = 'mid'
+        ORDER BY "date" ASC
+    </select>
+    
+    <!-- 해당일 00:00~23:30 입차 수요 예측 데이터가 있는지 찾아보기 -->
+    <select id="countPredictionsByDate" resultType="int">
+        SELECT COUNT(*)
+        FROM parking_prediction
+        WHERE target_datetime::date = #{targetDate}
+    </select>
+
+</mapper>
