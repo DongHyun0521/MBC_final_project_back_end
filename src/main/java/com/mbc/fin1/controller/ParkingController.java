@@ -1,6 +1,7 @@
 // mbcFinalProject1 - com.mbc.fin1.controller - ParkingController.java
 package com.mbc.fin1.controller;
 
+import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -22,6 +23,7 @@ public class ParkingController {
     // 주차 자리 전체 출력하기
     @GetMapping("/spots")
     public List<ParkingSpotDto> getAllSpots() {
+    	System.out.println("=> ParkingController: getAllSpots | " + new Date());
         return parkingSpotDao.findAllSpots();
     }
 }

@@ -4,8 +4,8 @@
 
 	<!-- 의료진 회원 가입 -->
     <insert id="addMedStaff" parameterType="com.mbc.fin1.dto.MedStaffDto">
-        INSERT INTO med_staff (mem_id, role, license_number, status, med_dept_id, parking_spot_id) 
-        VALUES (#{memId}, #{role}, #{licenseNumber}, #{status}, #{medDeptId}, #{spotId})
+        INSERT INTO med_staff (mem_id, role, license_number, status, med_dept_id) 
+        VALUES (#{memId}, #{role}, #{licenseNumber}, #{status}, #{medDeptId})
     </insert>
     
     <!-- 의사인지 확인 -->
@@ -132,6 +132,11 @@
         FROM reservation r JOIN mem m ON r.mem_id = m.mem_id
         WHERE r.doctor_id = #{doctorId}
         ORDER BY r.reservation_date ASC, r.reservation_time ASC
+    </select>
+    
+    <!-- PK로 예약 날짜 찾기 -->
+    <select id="getReservationDateById" parameterType="long" resultType="java.time.LocalDate">
+        SELECT reservation_date FROM reservation WHERE reservation_id = #{reservationId}
     </select>
     
 </mapper>

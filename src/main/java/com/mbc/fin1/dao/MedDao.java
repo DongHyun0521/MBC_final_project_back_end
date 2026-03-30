@@ -30,4 +30,6 @@ public interface MedDao {
     
     List<Map<String, Object>> getReservationsByMember(Long memId);		// 회원별 예약 목록
     List<Map<String, Object>> getReservationsByDoctor(Long doctorId);	// 의사별 예약 목록
+    
+    java.time.LocalDate getReservationDateById(Long reservationId);	// PK로 예약 날짜 찾기
 }

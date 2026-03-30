@@ -30,6 +30,7 @@ public class OcrService {
     // 💡 사진을 받아 파이썬 서버에 넘기고, 순수 텍스트 결과만 Map으로 리턴
     public Map<String, Object> readLicensePlate(MultipartFile file) {
         System.out.println("=> OcrService: readLicensePlate | "+ new Date());
+        
         Map<String, Object> resultMap = new HashMap<>();
         List<String> debugImages = new ArrayList<>();
 

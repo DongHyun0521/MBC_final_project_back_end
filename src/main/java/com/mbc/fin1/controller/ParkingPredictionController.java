@@ -2,6 +2,7 @@
 package com.mbc.fin1.controller;
 
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,26 +21,26 @@ public class ParkingPredictionController {
     @Autowired
     private ParkingPredictionService predictionService;
 
-    // 📈 [UI 왼쪽] 단기 예측: 날짜별 00:00~23:30 (30분 단위) 주차 흐름
+    // 초단기/단기: 시작일~종료일 30분 단위 입차 예측 
     @GetMapping("/parkingChart/short")
     public List<Map<String, Object>> getShortTermChart(
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+    	System.out.println("=> ParkingPredictionController: getShortTermChart | " + new Date());
         
-        // 안 보내면 오늘 ~ 3일 뒤까지 자동 세팅
-        if (startDate == null) startDate = LocalDate.now();
-        if (endDate == null) endDate = LocalDate.now().plusDays(2);
+        if (startDate == null) startDate = LocalDate.now();	// 시작일 기본값: 오늘
+        if (endDate == null) endDate = LocalDate.now();		// 종료일 기본값: 오늘
         
         return predictionService.getShortTermChartData(startDate, endDate);
     }
 
-    // 📊 [UI 오른쪽] 중기 예측: 향후 3일~11일 뒤 (일 단위 피크 혼잡도)
+    // 중기: 3일~10일 후 일 단위 입차 예측
     @GetMapping("/parkingChart/mid")
     public List<Map<String, Object>> getMidTermChart() {
-        
-        // 날짜 선택 불가능 기획 반영 -> 무조건 3일 뒤부터 7일(또는 11일) 뒤까지 자동 세팅
-        LocalDate startDate = LocalDate.now().plusDays(3);
-        LocalDate endDate = LocalDate.now().plusDays(9); // 총 7일치 막대그래프 
+    	System.out.println("=> ParkingPredictionController: getMidTermChart | " + new Date());
+    	
+        LocalDate startDate = LocalDate.now().plusDays(3);	// 시작일 기본값: 3일 후 (변경 불가능)
+        LocalDate endDate = LocalDate.now().plusDays(10);	// 종료일 기본값: 10일 후 (변경 불가능)
         
         return predictionService.getMidTermChartData(startDate, endDate);
     }

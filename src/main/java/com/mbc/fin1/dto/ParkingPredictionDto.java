@@ -36,10 +36,10 @@ public class ParkingPredictionDto {
     private Integer resOrthopedics;		// 정형외과 예약 수
     private Integer resNeurosurgery;	// 신경외과 예약 수
     private Integer resPediatrics;		// 소아청소년과 예약 수
-    private Integer resEnt;            // 이비인후과
-    private Integer resDermatology;    // 피부과
-    private Integer resOphthalmology;  // 안과
-    private Integer resDentistry;      // 치과
-    private Integer resPsychiatry;     // 정신건강의학과
+    private Integer resEnt;				// 이비인후과
+    private Integer resDermatology;		// 피부과
+    private Integer resOphthalmology;	// 안과
+    private Integer resDentistry;		// 치과
+    private Integer resPsychiatry;		// 정신건강의학과
     private Integer resTotal;			// 전체 예약 수
 }

@@ -4,8 +4,8 @@
 
 	<!-- 행정직 회원 가입 -->
     <insert id="addAdminStaff" parameterType="com.mbc.fin1.dto.AdminStaffDto">
-        INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id, parking_spot_id) 
-        VALUES (#{memId}, #{rank}, #{empNumber}, #{status}, #{adminDeptId}, #{spotId})
+        INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id) 
+        VALUES (#{memId}, #{rank}, #{empNumber}, #{status}, #{adminDeptId})
     </insert>
     
     <!-- 행정직인지 확인 -->

@@ -1,4 +1,4 @@
-// middleProject - com.mbc.fin1.service - MemService.java
+// mbcFinalProject1 - com.mbc.fin1.service - MemService.java
 package com.mbc.fin1.service;
 
 import java.io.File;
@@ -24,28 +24,36 @@ public class MemService {
 
     // 아이디 중복 확인
     public int idCheck(String id) {
+    	System.out.println("=> MemService: idCheck | "+ new Date());
+    	
     	return memDao.idCheck(id);
     }
     
     // 회원 가입
     public void addMem(MemDto memDto) {
+    	System.out.println("=> MemService: addMem | "+ new Date());
+    	
     	memDao.addMem(memDto);
     }
     
     // 회원 탈퇴 (del=1)
     public void delMem(String id) {
+    	System.out.println("=> MemService: delMem | "+ new Date());
+    	
     	memDao.delMem(id);
     }
     
     // 로그인
     public MemDto login(MemDto memDto) {
     	System.out.println("=> MemService: login | "+ new Date());
+    	
     	return memDao.login(memDto);
     }
     
     // 아이디 찾기
     public String findId(MemDto memDto) {
     	System.out.println("=> MemService: findId | "+ new Date());
+    	
     	return memDao.findId(memDto);
     }
     
@@ -54,12 +62,14 @@ public class MemService {
     // 내 정보
     public MemDto getMemberInfo(String id) {
     	System.out.println("=> MemService: getMemberInfo | "+ new Date());
+    	
     	return memDao.getMemberInfo(id);
     }
     
     // 내 정보 수정
     public void updateMem(MemDto memDto) {
     	System.out.println("=> MemService: updateMem | "+ new Date());
+    	
     	memDao.updateMem(memDto);
     }
 
@@ -68,24 +78,28 @@ public class MemService {
     // 내 차량 목록
     public List<MemberVehicleDto> getMemberVehicleList(String id) {
     	System.out.println("=> MemService: getMemberVehicleList | "+ new Date());
+    	
     	return memDao.getMemberVehicleList(id);
     }
     
     // 내 차량 추가
     public void addVehi(MemberVehicleDto vehicleDto) {
     	System.out.println("=> MemService: addVehi | "+ new Date());
+    	
     	memDao.addVehi(vehicleDto);
     }
     
     // 내 차량 수정
     public int  updateVehi(MemberVehicleDto vehicleDto) {
     	System.out.println("=> MemService: updateVehi | "+ new Date());
+    	
     	return memDao.updateVehi(vehicleDto);
     }
     
     // 내 차량 삭제 (delete)
     public int delVehi(String vehicleNum, Long memId) {
     	System.out.println("=> MemService: delVehi | "+ new Date());
+    	
         return memDao.delVehi(vehicleNum, memId);
     }
     
@@ -93,15 +107,17 @@ public class MemService {
     
     // 회원별 고객의소리 목록 (전체/미답변/답변완료)
     public List<VocDto> getMyVocList(Long memId, String filter) {
+    	System.out.println("=> MemService: getMyVocList | "+ new Date());
+    	
         if (filter == null || filter.isEmpty()) filter = "all";
         return memDao.getMyVocList(memId, filter);
     }
     
     // 파일 저장
     private String saveFile(MultipartFile file) throws Exception {
-        if (file == null || file.isEmpty()) {
-            return null;
-        }
+    	System.out.println("=> MemService: saveFile | "+ new Date());
+    	
+        if (file == null || file.isEmpty()) return null;
         
         String uploadDir = "images/";
         File folder = new File(uploadDir);
@@ -117,6 +133,8 @@ public class MemService {
 
     // 고객의소리 작성
     public void addVoc(VocDto vocDto) throws Exception {
+    	System.out.println("=> MemService: addVoc | "+ new Date());
+    	
     	String savedPath = saveFile(vocDto.getUploadFile());
         vocDto.setUploadImg(savedPath);
         
@@ -125,6 +143,8 @@ public class MemService {
 
     // 고객의소리 수정 (답변 없는 것만 수정 가능)
     public int updateVoc(VocDto vocDto) throws Exception {
+    	System.out.println("=> MemService: updateVoc | "+ new Date());
+    	
     	String savedPath = saveFile(vocDto.getUploadFile());
         if (savedPath != null) vocDto.setUploadImg(savedPath);
         
@@ -133,6 +153,8 @@ public class MemService {
 
     // 고객의소리 삭제 (답변이 있을 시 같이 삭제)
     public int deleteVoc(Long vocId, Long memId) {
+    	System.out.println("=> MemService: deleteVoc | "+ new Date());
+    	
         return memDao.deleteVoc(vocId, memId);
     }
 }

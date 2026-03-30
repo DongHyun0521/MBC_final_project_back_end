@@ -2,6 +2,7 @@
 package com.mbc.fin1.service;
 
 import java.io.File;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,6 +34,8 @@ public class AdminService {
 
     // 행정직 회원 가입
     public void registerAdminStaff(AdminStaffJoinDto joinDto) {
+    	System.out.println("=> AdminService: registerAdminStaff | "+ new Date());
+    	
         MemDto memDto = new MemDto();
         memDto.setId(joinDto.getId());
         memDto.setPassword(joinDto.getPassword());
@@ -60,33 +63,45 @@ public class AdminService {
     
     // 행정직인지 확인
     public boolean isAdmin(Long memId) {
+    	System.out.println("=> AdminService: isAdmin | "+ new Date());
+    	
         return adminDao.checkAdminCount(memId) > 0;
     }
     
     // 행정 부서 전체 목록
     public List<Map<String, Object>> getAllAdminDepts() {
+    	System.out.println("=> AdminService: getAllAdminDepts | "+ new Date());
+    	
         return adminDao.getAllAdminDepts();
     }
     
     // 부서 이름 확인
     public String getAdminDeptName(Long memId) {
+    	System.out.println("=> AdminService: getAdminDeptName | "+ new Date());
+    	
         return adminDao.getAdminDeptName(memId);
     }
     
     // 무슨 부서(원무)인지 확인
     public boolean isWonMu(Long memId) {
+    	System.out.println("=> AdminService: isWonMu | "+ new Date());
+    	
         String deptName = adminDao.getAdminDeptName(memId);
         return deptName != null && deptName.contains("원무");
     }
     
     // 무슨 부서(홍보)인지 확인
     public boolean isPr(Long memId) {
+    	System.out.println("=> AdminService: isPr | "+ new Date());
+    	
         String deptName = adminDao.getAdminDeptName(memId);
         return deptName != null && deptName.contains("홍보");
     }
     
     // 파일 저장
     private String saveFile(MultipartFile file) throws Exception {
+    	System.out.println("=> AdminService: saveFile | "+ new Date());
+    	
         if (file == null || file.isEmpty()) {
             return null; // 파일이 없으면 null 반환
         }
@@ -109,21 +124,29 @@ public class AdminService {
     
     // 공지사항 전체 목록
     public List<NoticeDto> getAllNoticeList() {
+    	System.out.println("=> AdminService: saveFile | "+ new Date());
+    	
         return adminDao.getAllNoticeList();
     }
     
     // 공지사항 상세 보기
     public NoticeDto getNoticeDetail(Long noticeId) {
+    	System.out.println("=> AdminService: saveFile | "+ new Date());
+    	
         return adminDao.getNoticeDetail(noticeId);
     }
     
     // 공지사항 조회수 증가
     public void increaseNoticeReadCount(Long noticeId) {
+    	System.out.println("=> AdminService: saveFile | "+ new Date());
+    	
         adminDao.increaseNoticeReadCount(noticeId);
     }
     
     // 공지사항 작성
     public void addNotice(NoticeDto noticeDto, Long memId) throws Exception {
+    	System.out.println("=> AdminService: saveFile | "+ new Date());
+    	
         Long adminStaffId = adminDao.getAdminStaffIdByMemId(memId);
         noticeDto.setAdminStaffId(adminStaffId);
         
@@ -136,6 +159,8 @@ public class AdminService {
     
     // 공지사항 수정
     public int updateNotice(NoticeDto noticeDto) throws Exception {
+    	System.out.println("=> AdminService: updateNotice | "+ new Date());
+    	
         // 새 파일이 있으면 저장, 없으면 null 리턴
         String savedPath = saveFile(noticeDto.getUploadFile());
         noticeDto.setThumbnailImg(savedPath); // XML에서 null이면 업데이트 안함
@@ -145,6 +170,8 @@ public class AdminService {
     
     // 공지사항 삭제 (del=1)
     public int deleteNotice(Long noticeId) {
+    	System.out.println("=> AdminService: deleteNotice | "+ new Date());
+    	
     	return adminDao.deleteNotice(noticeId);
     }
     
@@ -152,12 +179,16 @@ public class AdminService {
     
     // FAQ 전체/카테고리별 목록
     public List<FaqDto> getFaqList(String category) {
+    	System.out.println("=> AdminService: getFaqList | "+ new Date());
+    	
         if (category == null || category.isEmpty()) return adminDao.getAllFaqList();
         else return adminDao.getFaqListByCategory(category);
     }
 
     // FAQ 작성
     public void addFaq(FaqDto faqDto, Long memId) {
+    	System.out.println("=> AdminService: addFaq | "+ new Date());
+    	
         Long adminStaffId = adminDao.getAdminStaffIdByMemId(memId);
         faqDto.setAdminStaffId(adminStaffId);
         adminDao.addFaq(faqDto);
@@ -165,11 +196,15 @@ public class AdminService {
     
     // FAQ 수정
     public int updateFaq(FaqDto faqDto) {
+    	System.out.println("=> AdminService: updateFaq | "+ new Date());
+    	
     	return adminDao.updateFaq(faqDto);
     }
     
     // FAQ 삭제 (del=1)
     public int deleteFaq(Long faqId) {
+    	System.out.println("=> AdminService: deleteFaq | "+ new Date());
+    	
     	return adminDao.deleteFaq(faqId);
     }
     
@@ -177,27 +212,37 @@ public class AdminService {
     
     // 고객의소리 목록 (전체/미답변/답변완료/삭제)
     public List<VocDto> getAllVocList(String filter) {
+    	System.out.println("=> AdminService: getAllVocList | "+ new Date());
+    	
         if (filter == null || filter.isEmpty()) filter = "all";
         return adminDao.getAllVocList(filter);
     }
     
     // 고객의소리 상세 보기
     public VocDto getVocDetail(Long vocId) {
+    	System.out.println("=> AdminService: getVocDetail | "+ new Date());
+    	
         return adminDao.getVocDetail(vocId);
     }
     
     // 고객의소리 강제 삭제 (del=1)
     public int deleteVocByAdmin(Long vocId) {
+    	System.out.println("=> AdminService: deleteVocByAdmin | "+ new Date());
+    	
         return adminDao.deleteVocByAdmin(vocId);
     }
     
     // 고객의소리 복구 (del=0)
     public int restoreVoc(Long vocId) {
+    	System.out.println("=> AdminService: restoreVoc | "+ new Date());
+    	
         return adminDao.restoreVoc(vocId);
     }
 
     // 고객의소리 답글 작성
     public int addReply(VocDto vocDto, Long memId) {
+    	System.out.println("=> AdminService: addReply | "+ new Date());
+    	
         Long staffId = adminDao.getAdminStaffIdByMemId(memId);
         vocDto.setAdminStaffId(staffId);
         return adminDao.addReply(vocDto);
@@ -205,6 +250,8 @@ public class AdminService {
 
     // 고객의소리 답글 수정
     public int updateReply(VocDto vocDto, Long memId) {
+    	System.out.println("=> AdminService: updateReply | "+ new Date());
+    	
         Long staffId = adminDao.getAdminStaffIdByMemId(memId);
         vocDto.setAdminStaffId(staffId);
         return adminDao.updateReply(vocDto);
@@ -212,6 +259,8 @@ public class AdminService {
 
     // 고객의소리 답글 삭제 (NULL)
     public int deleteReply(Long vocId) {
+    	System.out.println("=> AdminService: deleteReply | "+ new Date());
+    	
         return adminDao.deleteReply(vocId);
     }
     
@@ -219,11 +268,15 @@ public class AdminService {
     
     // 건강이야기 목록
     public List<HealthStoryDto> getAllHealthStories() {
+    	System.out.println("=> AdminService: getAllHealthStories | "+ new Date());
+    	
         return adminDao.getAllHealthStories();
     }
 
     // 건강이야기 작성
     public void addHealthStory(HealthStoryDto dto, Long memId) throws Exception {
+    	System.out.println("=> AdminService: addHealthStory | "+ new Date());
+    	
         Long staffId = adminDao.getAdminStaffIdByMemId(memId);
         dto.setAdminStaffId(staffId);
 
@@ -235,16 +288,22 @@ public class AdminService {
     
     // 건강이야기 상세 보기
     public HealthStoryDto getHealthStoryDetail(Long healthStoryId) {
+    	System.out.println("=> AdminService: getHealthStoryDetail | "+ new Date());
+    	
         return adminDao.getHealthStoryDetail(healthStoryId);
     }
     
     // 건강이야기 조회수 증가
     public void increaseHealthStoryReadCount(Long healthStoryId) {
+    	System.out.println("=> AdminService: increaseHealthStoryReadCount | "+ new Date());
+    	
         adminDao.increaseHealthStoryReadCount(healthStoryId);
     }
     
     // 건강이야기 수정
     public int updateHealthStory(HealthStoryDto dto) throws Exception {
+    	System.out.println("=> AdminService: updateHealthStory | "+ new Date());
+    	
         String savedPath = saveFile(dto.getUploadFile());
         if (savedPath != null) dto.setThumbnailImg(savedPath);
 
@@ -253,6 +312,8 @@ public class AdminService {
     
     // 건강이야기 삭제 (del=1)
     public int deleteHealthStory(Long healthStoryId) {
+    	System.out.println("=> AdminService: deleteHealthStory | "+ new Date());
+    	
         return adminDao.deleteHealthStory(healthStoryId);
     }
 }
