@@ -127,7 +127,6 @@
 	    ORDER BY "date" ASC
 	</select>
 
-
     <!-- 해당일 short/vshort 입차 수요 예측 데이터 개수 세기 -->
     <select id="countPredictionsByDate" resultType="int">
         SELECT COUNT(*)
@@ -162,5 +161,10 @@
 	      AND forecast_type != 'vshort'
 	</select>
 
+	<!-- 진료예약 생성/취소/완료/노쇼 시 예측 삭제하기 -->
+	<delete id="deletePredictionsByDate" parameterType="java.time.LocalDate">
+	    DELETE FROM parking_prediction
+	    WHERE DATE(target_datetime) = #{value}
+	</delete>
 
 </mapper>
