@@ -146,30 +146,7 @@ CREATE TABLE parking_spot (
 	
 	is_parked BOOLEAN NOT NULL DEFAULT FALSE	-- 주차 여부
 );
--- 9. 전기차 충전기
-CREATE TABLE ev_charger (
-	ev_charger_id SERIAL PRIMARY KEY,				-- PK
-	parking_spot_id INTEGER UNIQUE NOT NULL
-		REFERENCES parking_spot(parking_spot_id),	-- FK (parking_spot)
-		
-	ev_charger_type VARCHAR(20) NOT NULL,						-- 전기차 충전기 종류 (급속, 중속, 완속)
-	ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY',	-- 전기차 충전기 상태 (STANDBY, CHARGING, ERROR)
-	ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE				-- 전기차 충전기 전원
-);
--- 10. 전기차 충전 기록
-CREATE TABLE ev_charging_log (
-	ev_charging_log_id SERIAL PRIMARY KEY,							-- PK
-	ev_charger_id INTEGER NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),						-- FK (ev_charger)
-	parking_log_id INTEGER NOT NULL
-		REFERENCES parking_log(parking_log_id) ON DELETE CASCADE,	-- FK (parking_log)
-	
-	ev_charging_start_time TIMESTAMP NOT NULL DEFAULT now(),	-- 충전 시작 시간
-	ev_charging_end_time TIMESTAMP,								-- 충전 종료 시간
-	ev_charging_fee INTEGER DEFAULT 0,							-- 충전 요금
-	ev_charging_end_reason VARCHAR(50) DEFAULT 'NORMAL'			-- 충전 종료 사유 (NORMAL, ERROR)
-);
--- 11. 영수증
+-- 9. 영수증
 CREATE TABLE receipt(
 	receipt_id SERIAL PRIMARY KEY,					-- PK
 	mem_id INTEGER
@@ -187,7 +164,7 @@ CREATE TABLE receipt(
 
 -- ==================================================
 
--- 12. 머신러닝: 주차 대수 예측
+-- 10. 주차 대수 예측: 예측 데이터
 DROP TABLE IF EXISTS parking_prediction;
 CREATE TABLE parking_prediction (
 	parking_prediction_id SERIAL PRIMARY KEY,			-- PK
@@ -224,7 +201,7 @@ CREATE TABLE parking_prediction (
 DELETE FROM parking_prediction;
 SELECT * FROM parking_prediction;
 
--- 13. 2026년 공휴일 테이블
+-- 11. 주차 대수 예측: 공휴일
 DROP TABLE IF EXISTS holidays;
 CREATE TABLE holidays (
 	holiday_date DATE PRIMARY KEY,		-- PK
@@ -255,11 +232,103 @@ SELECT * FROM holidays;
 
 -- ==================================================
 
--- 14. 객체추적: 과속 단속 로그
+-- 12. 예지보전: 전기차 충전기
+CREATE TABLE ev_charger (
+	ev_charger_id SERIAL PRIMARY KEY,				-- PK
+	parking_spot_id INTEGER UNIQUE NOT NULL
+		REFERENCES parking_spot(parking_spot_id),	-- FK (parking_spot)
+		
+	ev_charger_type VARCHAR(20) NOT NULL,						-- 전기차 충전기 종류 (급속, 중속, 완속)
+	ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY',	-- 전기차 충전기 상태 (STANDBY, CHARGING, ERROR)
+	ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE				-- 전기차 충전기 전원
+);
+-- 13. 예지보전: 전기차 충전 기록
+CREATE TABLE ev_charging_log (
+	ev_charging_log_id SERIAL PRIMARY KEY,							-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),						-- FK (ev_charger)
+	parking_log_id INTEGER NOT NULL
+		REFERENCES parking_log(parking_log_id) ON DELETE CASCADE,	-- FK (parking_log)
+	vehicle_num VARCHAR(20),										-- 차량번호
+	
+	ev_charging_start_time TIMESTAMP NOT NULL DEFAULT now(),									-- 충전 시작 시간
+	ev_charging_end_time TIMESTAMP,																-- 충전 종료 시간
+	ev_charging_end_reason VARCHAR(50) NOT NULL DEFAULT 'NORMAL' 
+		CHECK (ev_charging_end_reason IN ('NORMAL', 'USER_STOP', 'POWER_OFF', 'FAULT_STOP')),	-- 충전 종료 사유 (NORMAL, ERROR)
+	
+	ev_charging_fee INTEGER DEFAULT 0,				-- 충전 요금
+	charged_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,	-- 충전량 (kWh)
+	charging_duration_minutes INTEGER				-- 충전 시간 (분)
+);
+-- 14. 예지보전: 충전기 상태 변경 이력
+CREATE TABLE ev_charger_status_log (
+	ev_charger_status_log_id SERIAL PRIMARY KEY,	-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),		-- FK (ev_charger)
+	vehicle_num VARCHAR(20),						-- 차량 번호
+	
+	status_code VARCHAR(20) NOT NULL
+		CHECK (status_code IN ('STANDBY', 'CHARGING', 'CHECK', 'FAULT', 'POWER_OFF')),	-- 상태 코드
+	status_message VARCHAR(255),														-- 상태 설명
+	
+	current_charged_kwh NUMERIC(10, 2) DEFAULT 0,	-- 현재 충전량 (kWh)
+	remaining_minutes INTEGER,						-- 남은 시간 (분)
+	occurred_at TIMESTAMP NOT NULL DEFAULT now(),	-- 상태 발생 시각
+	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 등록 일시
+);
+-- 15. 예지보전: 충전기 센서 시계열 데이터 기록
+CREATE TABLE ev_charger_sensor_history (
+	ev_charger_sensor_history_id SERIAL PRIMARY KEY,	-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),			-- FK (ev_charger)
+	
+	measured_at TIMESTAMP NOT NULL,					-- 측정 시각
+	temperature_c NUMERIC(6, 2),					-- 내부 온도 (℃)
+	current_a NUMERIC(8, 2),						-- 전류 (A)
+	voltage_v NUMERIC(8, 2),						-- 전압 (V)
+	remaining_life_pct NUMERIC(5, 2),				-- 잔여 수명 (%)
+	health_score NUMERIC(5, 2),						-- 건강도 점수
+	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 등록 일시
+);
+-- 16. 예지보전: 예측 결과
+CREATE TABLE ev_prediction_result (
+	ev_prediction_result_id SERIAL PRIMARY KEY,				-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),				-- FK (ev_charger)
+	
+	predicted_at TIMESTAMP NOT NULL DEFAULT now(),				-- 예측 시각
+	status_code VARCHAR(20) NOT NULL
+		CHECK (status_code IN ('NORMAL', 'WARNING', 'RISK')),	-- 예측 상태
+	risk_score NUMERIC(6, 4),									-- 위험 점수
+	fault_prob_7d NUMERIC(6, 4),								-- 7일 내 고장 확률
+	ttr_hours NUMERIC(10, 2),									-- 예상 고장까지 남은 시간 (h)
+	main_reason VARCHAR(255),									-- 주요 원인
+	action_message VARCHAR(255),								-- 조치 문구
+	model_version VARCHAR(50),									-- 모델 버전
+	create_time TIMESTAMP NOT NULL DEFAULT now()				-- 등록 일시
+);
+-- 17. 예지보전: 점검/전원차단 요청 이력
+CREATE TABLE ev_maintenance_request (
+	ev_maintenance_request_id SERIAL PRIMARY KEY,	-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),		-- FK (ev_charger)
+	
+	request_type VARCHAR(20) NOT NULL
+		CHECK (request_type IN ('CHECK', 'POWER_OFF')),										-- 요청 유형
+	request_reason VARCHAR(255) NOT NULL,													-- 요청 사유
+	request_status VARCHAR(20) NOT NULL DEFAULT 'REQUESTED'
+		CHECK (request_status IN ('REQUESTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),	-- 요청 상태
+	requested_dept VARCHAR(100) NOT NULL DEFAULT '시설관리팀',								-- 요청 부서
+	requested_at TIMESTAMP NOT NULL DEFAULT now(),											-- 요청 시각
+	
+	processed_at TIMESTAMP,							-- 처리 시각
+	processed_note VARCHAR(255),					-- 처리 메모
+	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 등록 일시
+);
 
 -- ==================================================
 
--- 15. 예지보전: 전기차 충전기 시계열 데이터
+-- 객체추적: 과속 단속 로그
 
 -- ==================================================
 
