@@ -4,7 +4,7 @@
 
 	<!-- 공휴일 날짜만 리스트로 불러오기 -->
     <select id="findAllHolidayDates" resultType="java.time.LocalDate">
-        SELECT holiday_date FROM holidays
+        SELECT holiday_date FROM holiday
     </select>
 
 </mapper>

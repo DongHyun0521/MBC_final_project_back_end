@@ -206,13 +206,13 @@ DELETE FROM parking_prediction;
 SELECT * FROM parking_prediction;
 
 -- 11. 주차 대수 예측: 공휴일
-DROP TABLE IF EXISTS holidays;
-CREATE TABLE holidays (
+DROP TABLE IF EXISTS holiday;
+CREATE TABLE holiday (
 	holiday_date DATE PRIMARY KEY,		-- PK
 	holiday_name VARCHAR(50) NOT NULL	-- 공휴일 이름
 );
-DELETE FROM holidays;
-INSERT INTO holidays (holiday_date, holiday_name) VALUES
+DELETE FROM holiday;
+INSERT INTO holiday (holiday_date, holiday_name) VALUES
 	('2026-01-01', '신정'),
 	('2026-02-16', '설날'),					-- 설날 연휴
 	('2026-02-17', '설날'),
@@ -232,7 +232,7 @@ INSERT INTO holidays (holiday_date, holiday_name) VALUES
 	('2026-10-03', '개천절'),
 	('2026-10-09', '한글날'),
 	('2026-12-25', '기독탄신일');			-- 크리스마스
-SELECT * FROM holidays;
+SELECT * FROM holiday;
 
 -- ==================================================
 
@@ -456,8 +456,6 @@ SELECT * FROM reservation;
 SELECT * FROM parking_log;
 SELECT * FROM parking_spot;
 SELECT * FROM receipt;
-SELECT * FROM parking_prediction;
-SELECT * FROM holidays;
 SELECT * FROM ev_charger;
 SELECT * FROM ev_charging_log;
 SELECT * FROM ev_charger_status_log;
@@ -895,7 +893,7 @@ FROM
             '1 day'::INTERVAL
         ) d
         WHERE EXTRACT(DOW FROM d) <> 0
-          AND d::DATE NOT IN (SELECT holiday_date FROM holidays)
+          AND d::DATE NOT IN (SELECT holiday_date FROM holiday)
     ) dates
 
     -- 평일/토요일 시간 슬롯 분기
