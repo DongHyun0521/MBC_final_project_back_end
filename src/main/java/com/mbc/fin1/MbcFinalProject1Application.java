@@ -3,8 +3,10 @@ package com.mbc.fin1;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class MbcFinalProject1Application {
 	public static void main(String[] args) {
 		SpringApplication.run(MbcFinalProject1Application.class, args);

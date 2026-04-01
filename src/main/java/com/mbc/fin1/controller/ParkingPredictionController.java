@@ -44,4 +44,11 @@ public class ParkingPredictionController {
         
         return predictionService.getMidTermChartData(startDate, endDate);
     }
+    
+    // 현재 날씨 조회
+    @GetMapping("/currentWeather")
+    public Map<String, Object> getCurrentWeather() {
+        System.out.println("=> ParkingPredictionController: getCurrentWeather | " + new Date());
+        return predictionService.getCurrentWeather();
+    }
 }

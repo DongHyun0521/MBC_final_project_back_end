@@ -671,5 +671,52 @@ public class ParkingPredictionService {
         
         return result;
     }
+    
+ // 현재 날씨 조회 (대시보드용): 기상청 초단기 + 에어코리아 실시간
+    public Map<String, Object> getCurrentWeather() {
+        System.out.println("=> ParkingPredictionService: getCurrentWeather | " + new Date());
 
+        LocalDate today = LocalDate.now();
+        LocalTime now   = LocalTime.now();
+
+        Map<String, Object> result = new HashMap<>();
+
+        // 기상청 초단기 예보 (현재 시각 기준)
+        Map<String, String> ultra = getKmaUltraSrtFcst(today, now);
+
+        double temp       = Double.parseDouble(ultra.getOrDefault("T1H", "15.0"));
+        double rainfallMm = parseRainSnowString(ultra.getOrDefault("RN1", "0.0"));
+        double windSpeed  = Double.parseDouble(ultra.getOrDefault("WSD", "2.0"));
+        int    humidity   = (int) Double.parseDouble(ultra.getOrDefault("REH", "50"));
+        double snowfallCm = 0.0;
+
+        // SKY(하늘 상태) + PTY(강수 형태) → 날씨 문자열
+        int pty = 0, sky = 1;
+        try { pty = Integer.parseInt(ultra.getOrDefault("PTY", "0")); } catch (Exception ignored) {}
+        try { sky = Integer.parseInt(ultra.getOrDefault("SKY", "1")); } catch (Exception ignored) {}
+
+        String skyCondition;
+        if      (pty == 1 || pty == 5) { skyCondition = "비";       }
+        else if (pty == 2 || pty == 6) { skyCondition = "비/눈";    }
+        else if (pty == 3 || pty == 7) { skyCondition = "눈"; snowfallCm = rainfallMm; rainfallMm = 0.0; }
+        else if (sky == 1)             { skyCondition = "맑음";     }
+        else if (sky == 3)             { skyCondition = "구름많음"; }
+        else                           { skyCondition = "흐림";     }
+
+        // 에어코리아 실시간 대기질
+        Map<String, Double> air = getAirKoreaRealTime();
+        double pm10 = air.getOrDefault("pm10", 40.0);
+        double pm25 = air.getOrDefault("pm25", 15.0);
+
+        result.put("skyCondition", skyCondition);
+        result.put("temp",         temp);
+        result.put("rainfallMm",   rainfallMm);
+        result.put("windSpeed",    windSpeed);
+        result.put("humidity",     humidity);
+        result.put("snowfallCm",   snowfallCm);
+        result.put("pm10",         pm10);
+        result.put("pm25",         pm25);
+
+        return result;
+    }
 }
