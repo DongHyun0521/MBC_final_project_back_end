@@ -36,4 +36,4 @@ build/
 
 .metadata/
 bin/.metadata/
-*.log
+*.logmodel_data/train.csv
