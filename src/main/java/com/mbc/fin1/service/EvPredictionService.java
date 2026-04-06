@@ -2,8 +2,8 @@ package com.mbc.fin1.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import com.mbc.fin1.dto.EvPredictionDto;
 
@@ -20,6 +20,11 @@ public class EvPredictionService {
 
     public EvPredictionDto getPrediction(Long chargerId) {
         String url = fastapiBaseUrl + "/predict/db/" + chargerId;
-        return restTemplate.getForObject(url, EvPredictionDto.class);
+
+        try {
+            return restTemplate.getForObject(url, EvPredictionDto.class);
+        } catch (RestClientException e) {
+            throw new RuntimeException("FastAPI 호출 실패: chargerId=" + chargerId, e);
+        }
     }
 }
