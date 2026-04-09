@@ -4,39 +4,76 @@
  	
  	<!-- 차량 입차 시 -->
  	<insert id="insertEntryLog" parameterType="com.mbc.fin1.dto.ParkingLogDto" useGeneratedKeys="true" keyProperty="parkingLogId" keyColumn="parking_log_id">
-        INSERT INTO parking_log (vehicle_num, license_plate_country, is_ev_license_plate, entry_time) 
-        VALUES (#{vehicleNum}, #{licensePlateCountry}, #{isEvLicensePlate}, NOW())
-    </insert>
+	    INSERT INTO parking_log (
+            vehicle_img, license_plate_img, 
+            license_plate_country, country_accuracy,
+            vehicle_num, ocr_accuracy, 
+            is_ev_license_plate, entry_time, is_member
+        ) VALUES (
+            #{vehicleImg}, #{licensePlateImg}, 
+            #{licensePlateCountry}, #{countryAccuracy},
+            #{vehicleNum}, #{ocrAccuracy}, 
+            #{isEvLicensePlate}, NOW(), #{isMember}
+        )
+	</insert>
     
     <!-- 차량 출차 시, 최근부터 입차 기록 검색 -->
-    <select id="selectRecentEntryLog" parameterType="String" resultType="com.mbc.fin1.dto.ParkingLogDto">
-        SELECT * FROM parking_log 
-        WHERE vehicle_num = #{vehicleNum} 
-        	AND exit_time IS NULL 
-        ORDER BY entry_time DESC LIMIT 1
-    </select>
+    <select id="selectRecentEntryLog" resultType="com.mbc.fin1.dto.ParkingLogDto">
+	    SELECT 
+	        p.*, 
+	        a.emp_number AS empNumber, 
+	        EXTRACT(EPOCH FROM (COALESCE(p.exit_time, NOW()) - p.entry_time))/60 AS duration
+	    FROM parking_log p
+	    LEFT JOIN admin_staff a ON p.admin_staff_id = a.admin_staff_id
+	    WHERE p.del = 0
+	    ORDER BY p.entry_time DESC
+	</select>
 
 	<!-- 출차 기록 업데이트 -->
     <update id="updateExitLog" parameterType="com.mbc.fin1.dto.ParkingLogDto">
         UPDATE parking_log 
         SET exit_time = NOW(), 
             is_member = #{isMember},
-            parking_fee = #{parkingFee}
+            parking_fee = #{parkingFee},
+            is_paid = #{isPaid},
+            pay_type = #{payType}
         WHERE parking_log_id = #{parkingLogId}
     </update>
+    
+    <!-- 주차 로그 출력 -->
+    <select id="selectParkingLogs" resultType="com.mbc.fin1.dto.ParkingLogDto">
+        SELECT 
+            p.*, 
+            a.emp_number AS empNumber, 
+            EXTRACT(EPOCH FROM (COALESCE(p.exit_time, NOW()) - p.entry_time))/60 AS duration
+        FROM parking_log p
+        LEFT JOIN admin_staff a ON p.admin_staff_id = a.admin_staff_id
+        ORDER BY p.entry_time DESC
+    </select>
 
-    <!-- PK로 단건 조회 -->
+	<!-- 주차 로그 수정 -->
+    <update id="updateParkingLog">
+        UPDATE parking_log 
+        SET vehicle_num = #{vehicleNum},
+            license_plate_country = #{licensePlateCountry},
+            admin_staff_id = #{adminStaffId},
+            is_modified = TRUE,
+            modify_time = NOW()
+        WHERE parking_log_id = #{parkingLogId}
+    </update>
+    
+    <!-- 주차 로그 삭제 -->
+	<update id="deleteParkingLog" parameterType="com.mbc.fin1.dto.ParkingLogDto">
+	    UPDATE parking_log 
+	    SET del = 1,
+	        admin_staff_id = #{adminStaffId},
+	        modify_time = NOW()
+	    WHERE parking_log_id = #{parkingLogId}
+	</update>
+
+	<!-- PK로 단건 조회 -->
     <select id="findById" parameterType="int" resultType="com.mbc.fin1.dto.ParkingLogDto">
-        SELECT
-            parking_log_id  AS parkingLogId,
-            vehicle_num     AS vehicleNum,
-            license_plate_country AS licensePlateCountry,
-            is_ev_license_plate AS isEvLicensePlate,
-            entry_time      AS entryTime,
-            exit_time       AS exitTime,
-            is_member       AS isMember,
-            parking_fee     AS parkingFee
-        FROM parking_log 
+        SELECT * FROM parking_log 
         WHERE parking_log_id = #{parkingLogId}
     </select>
   

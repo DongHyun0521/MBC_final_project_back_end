@@ -23,12 +23,7 @@ public class WebConfigurer implements WebMvcConfigurer {
    
    @Override
    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-       // 현재 프로젝트 폴더 내 "images" 폴더의 절대 경로를 가져옵니다.
-       // (예: file:///C:/springBootSample/middleProject/images/)
-       String uploadPath = Paths.get("images").toAbsolutePath().toUri().toString();
-
-       // 주소창에 /images/** 로 요청이 오면 실제 폴더 위치를 보여줍니다.
-       registry.addResourceHandler("/images/**")
-               .addResourceLocations(uploadPath);
-   }
+	   registry.addResourceHandler("/images/**")
+       .addResourceLocations("file:///C:/springBootSample/mbcFinalProject1/images/");
+}
 }

@@ -1,24 +1,20 @@
 
-DROP TABLE IF EXISTS health_story;
-DROP TABLE IF EXISTS faq;
-DROP TABLE IF EXISTS notice;
-DROP TABLE IF EXISTS voc;
-DROP TABLE IF EXISTS admin_staff;
-DROP TABLE IF EXISTS admin_dept;
-DROP TABLE IF EXISTS ev_maintenance_request;
-DROP TABLE IF EXISTS ev_prediction_result;
-DROP TABLE IF EXISTS ev_charger_sensor_history;
-DROP TABLE IF EXISTS ev_charger_status_log;
 DROP TABLE IF EXISTS ev_charging_log;
 DROP TABLE IF EXISTS ev_charger;
 DROP TABLE IF EXISTS receipt;
 DROP TABLE IF EXISTS parking_spot;
 DROP TABLE IF EXISTS parking_log;
 DROP TABLE IF EXISTS reservation;
+DROP TABLE IF EXISTS health_story;
+DROP TABLE IF EXISTS faq;
+DROP TABLE IF EXISTS notice;
+DROP TABLE IF EXISTS voc;
 DROP TABLE IF EXISTS med_staff;
-DROP TABLE IF EXISTS med_dept;
+DROP TABLE IF EXISTS admin_staff;
 DROP TABLE IF EXISTS member_vehicle;
 DROP TABLE IF EXISTS payment_method;
+DROP TABLE IF EXISTS admin_dept;
+DROP TABLE IF EXISTS med_dept;
 DROP TABLE IF EXISTS mem;
 
 
@@ -116,29 +112,60 @@ CREATE TABLE reservation (
 
 -- ==================================================
 
--- 7. 주차 기록
+-- 7. 행정 부서
+CREATE TABLE admin_dept (
+	admin_dept_id SERIAL PRIMARY KEY,		-- PK
+	admin_dept_name VARCHAR(50) NOT NULL,	-- 행정 부서 이름
+	dept_location VARCHAR(100),				-- 부서 위치
+	dept_phone_number VARCHAR(20)			-- 부서 전화번호
+);
+-- 8. 행정직
+CREATE TABLE admin_staff (
+	admin_staff_id SERIAL PRIMARY KEY,				-- PK
+	mem_id INTEGER NOT NULL
+		REFERENCES mem(mem_id) ON DELETE CASCADE,	-- FK (mem)
+	admin_dept_id INTEGER
+		REFERENCES admin_dept(admin_dept_id),		-- FK (admin_dept)
+		
+	rank VARCHAR(20),								-- 직급
+	emp_number VARCHAR(50) UNIQUE NOT NULL,				-- 사원번호
+	status VARCHAR(20) NOT NULL DEFAULT '재직',		-- 재직 상태
+	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 가입 일시
+);
+
+-- ==================================================
+
+-- 9. 주차 기록
 CREATE TABLE parking_log (
 	parking_log_id SERIAL PRIMARY KEY,			-- PK
 	reservation_id INTEGER 
 		REFERENCES reservation(reservation_id),	-- FK (reservation)
-		
+	
 	vehicle_img VARCHAR(500) NOT NULL,	-- DB에 저장될 차량 이미지 경로 (/images/abc.jpg)
 	license_plate_img VARCHAR(500),		-- DB에 저장될 번호판 이미지 경로 (/images/abc.jpg)
-	
-	vehicle_num VARCHAR(20) NOT NULL,					-- 차량 번호 (OCR 결과)
+
 	license_plate_country VARCHAR(10) DEFAULT 'KOR',	-- 국가코드 (한국KOR, 말레이시아MYS, 중국CHN, 브라질BRA 등)
+	country_accuracy NUMERIC(5, 2) NOT NULL,			-- 국가판별 정확도
+	vehicle_num VARCHAR(20) NOT NULL,					-- 차량 번호 (OCR 결과 / 수정 결과)
+	ocr_accuracy NUMERIC(5, 2) NOT NULL,				-- PaddleOCR 정확도
 	is_ev_license_plate BOOLEAN DEFAULT FALSE,			-- 전기차(하늘색 번호판) 여부
 
 	entry_time TIMESTAMP NOT NULL DEFAULT now(),	-- 주차 시작 시간
 	exit_time TIMESTAMP,							-- 주차 종료 시간
 
-	is_member BOOLEAN NOT NULL DEFAULT FALSE,					-- 회원 여부
-	parking_fee INTEGER NOT NULL DEFAULT 0,						-- 주차 요금
-	is_paid BOOLEAN NOT NULL DEFAULT FALSE,						-- 결제 완료 여부
-	discount_amount INTEGER DEFAULT 0,							-- 할인 금액
-	pay_type VARCHAR(20) CHECK (pay_type IN ('AUTO', 'MANUAL'))	-- 결제 방식 (AUTO, MANUAL)
+	is_member BOOLEAN NOT NULL DEFAULT FALSE,						-- 회원 여부
+	parking_fee INTEGER NOT NULL DEFAULT 0,							-- 주차 요금
+	is_paid BOOLEAN NOT NULL DEFAULT FALSE,							-- 결제 완료 여부
+	discount_amount INTEGER DEFAULT 0,								-- 할인 금액
+	pay_type VARCHAR(20) CHECK (pay_type IN ('AUTO', 'MANUAL')),	-- 결제 방식 (AUTO, MANUAL)
+
+	admin_staff_id INTEGER 
+		REFERENCES admin_staff(admin_staff_id),	-- FK (admin_staff)
+	is_modified BOOLEAN DEFAULT FALSE,			-- 수정 여부
+	modify_time TIMESTAMP,						-- 수정 시간
+	del INT DEFAULT 0							-- 삭제 여부
 );
--- 8. 주차장 구역
+-- 10. 주차장 구역
 CREATE TABLE parking_spot (
 	parking_spot_id SERIAL PRIMARY KEY,			-- PK
 	parking_log_id INTEGER DEFAULT NULL 
@@ -150,7 +177,7 @@ CREATE TABLE parking_spot (
 	
 	is_parked BOOLEAN NOT NULL DEFAULT FALSE	-- 주차 여부
 );
--- 9. 영수증
+-- 11. 영수증
 CREATE TABLE receipt(
 	receipt_id SERIAL PRIMARY KEY,					-- PK
 	mem_id INTEGER
@@ -168,7 +195,59 @@ CREATE TABLE receipt(
 
 -- ==================================================
 
--- 10. 주차 대수 예측: 예측 데이터
+-- 12. 예지보전: 전기차 충전기
+CREATE TABLE ev_charger (
+	ev_charger_id SERIAL PRIMARY KEY,				-- PK
+	parking_spot_id INTEGER UNIQUE NOT NULL
+		REFERENCES parking_spot(parking_spot_id),	-- FK (parking_spot)
+		
+	ev_charger_type VARCHAR(20) NOT NULL 
+		CHECK (ev_charger_type IN ('FAST', 'SLOW')),							-- 전기차 충전기 종류 (급속, 완속)
+	ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY' 
+		CHECK (ev_charger_state IN ('STANDBY', 'CHARGING', 'CHECK', 'RISK')),	-- 충전기 상태
+    ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE								-- 전기차 충전기 전원
+);
+-- 13. 예지보전: 전기차 충전 기록
+CREATE TABLE ev_charging_log (
+    ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
+	parking_log_id INTEGER 
+		REFERENCES parking_log(parking_log_id),	-- FK (parking_log)
+		
+	vehicle_num VARCHAR(20),	-- 차량 번호
+	
+    start_time TIMESTAMP NOT NULL,														-- 충전 시작 시간
+    end_time TIMESTAMP, 																-- 충전 종료 시간
+    charging_duration_minutes INTEGER 
+		CHECK (charging_duration_minutes IS NULL OR charging_duration_minutes >= 0),	-- 충전 시간(분)
+		
+    charged_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
+		CHECK (charged_kwh >= 0),										-- 총 충전량
+    current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
+		CHECK (current_charge_kwh >= 0),								-- 현재 충전량
+    remaining_minutes INTEGER 
+		CHECK (remaining_minutes IS NULL OR remaining_minutes >= 0),	-- 남은 시간
+	
+    charge_status VARCHAR(20) NOT NULL DEFAULT 'READY' 
+		CHECK (charge_status IN ('READY', 'CHARGING', 'COMPLETE', 'STOPPED', 'FAULT')),	-- 충전 상태
+	end_reason_code VARCHAR(20) NOT NULL DEFAULT 'NORMAL' 
+		CHECK (end_reason_code IN ('NORMAL', 'FORCE_STOP', 'FAULT_STOP')),				-- 종료 사유
+    create_time TIMESTAMP NOT NULL DEFAULT now(),										-- 생성 시간
+    
+	CHECK (end_time IS NULL OR end_time >= start_time) -- 시간 정합성 체크
+);
+
+
+
+-- ==================================================
+
+-- ?. 객체추적: 과속 단속 로그
+
+-- ==================================================
+
+
+-- ?. 주차 대수 예측: 예측 데이터
 DROP TABLE IF EXISTS parking_prediction;
 CREATE TABLE parking_prediction (
 	parking_prediction_id SERIAL PRIMARY KEY,			-- PK
@@ -205,7 +284,7 @@ CREATE TABLE parking_prediction (
 DELETE FROM parking_prediction;
 SELECT * FROM parking_prediction;
 
--- 11. 주차 대수 예측: 공휴일
+-- ?. 주차 대수 예측: 공휴일
 DROP TABLE IF EXISTS holiday;
 CREATE TABLE holiday (
 	holiday_date DATE PRIMARY KEY,		-- PK
@@ -236,126 +315,6 @@ SELECT * FROM holiday;
 
 -- ==================================================
 
--- 12. 예지보전: 전기차 충전기
-CREATE TABLE ev_charger (
-	ev_charger_id SERIAL PRIMARY KEY,				-- PK
-	parking_spot_id INTEGER UNIQUE NOT NULL
-		REFERENCES parking_spot(parking_spot_id),	-- FK (parking_spot)
-		
-	ev_charger_type VARCHAR(20) NOT NULL,						-- 전기차 충전기 종류 (급속, 중속, 완속)
-	ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY',	-- 전기차 충전기 상태 (STANDBY, CHARGING, ERROR)
-	ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE				-- 전기차 충전기 전원
-);
--- 13. 예지보전: 전기차 충전 기록
-CREATE TABLE ev_charging_log (
-	ev_charging_log_id SERIAL PRIMARY KEY,							-- PK
-	ev_charger_id INTEGER NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),						-- FK (ev_charger)
-	parking_log_id INTEGER NOT NULL
-		REFERENCES parking_log(parking_log_id) ON DELETE CASCADE,	-- FK (parking_log)
-	vehicle_num VARCHAR(20),										-- 차량번호
-	
-	ev_charging_start_time TIMESTAMP NOT NULL DEFAULT now(),									-- 충전 시작 시간
-	ev_charging_end_time TIMESTAMP,																-- 충전 종료 시간
-	ev_charging_end_reason VARCHAR(50) NOT NULL DEFAULT 'NORMAL' 
-		CHECK (ev_charging_end_reason IN ('NORMAL', 'USER_STOP', 'POWER_OFF', 'FAULT_STOP')),	-- 충전 종료 사유 (NORMAL, ERROR)
-	
-	ev_charging_fee INTEGER DEFAULT 0,				-- 충전 요금
-	charged_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,	-- 충전량 (kWh)
-	charging_duration_minutes INTEGER				-- 충전 시간 (분)
-);
--- 14. 예지보전: 충전기 상태 변경 이력
-CREATE TABLE ev_charger_status_log (
-	ev_charger_status_log_id SERIAL PRIMARY KEY,	-- PK
-	ev_charger_id INTEGER NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),		-- FK (ev_charger)
-	vehicle_num VARCHAR(20),						-- 차량 번호
-	
-	status_code VARCHAR(20) NOT NULL
-		CHECK (status_code IN ('STANDBY', 'CHARGING', 'CHECK', 'FAULT', 'POWER_OFF')),	-- 상태 코드
-	status_message VARCHAR(255),														-- 상태 설명
-	
-	current_charged_kwh NUMERIC(10, 2) DEFAULT 0,	-- 현재 충전량 (kWh)
-	remaining_minutes INTEGER,						-- 남은 시간 (분)
-	occurred_at TIMESTAMP NOT NULL DEFAULT now(),	-- 상태 발생 시각
-	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 등록 일시
-);
--- 15. 예지보전: 충전기 센서 시계열 데이터 기록
-CREATE TABLE ev_charger_sensor_history (
-	ev_charger_sensor_history_id SERIAL PRIMARY KEY,	-- PK
-	ev_charger_id INTEGER NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),			-- FK (ev_charger)
-	
-	measured_at TIMESTAMP NOT NULL,					-- 측정 시각
-	temperature_c NUMERIC(6, 2),					-- 내부 온도 (℃)
-	current_a NUMERIC(8, 2),						-- 전류 (A)
-	voltage_v NUMERIC(8, 2),						-- 전압 (V)
-	remaining_life_pct NUMERIC(5, 2),				-- 잔여 수명 (%)
-	health_score NUMERIC(5, 2),						-- 건강도 점수
-	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 등록 일시
-);
--- 16. 예지보전: 예측 결과
-CREATE TABLE ev_prediction_result (
-	ev_prediction_result_id SERIAL PRIMARY KEY,				-- PK
-	ev_charger_id INTEGER NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),				-- FK (ev_charger)
-	
-	predicted_at TIMESTAMP NOT NULL DEFAULT now(),				-- 예측 시각
-	status_code VARCHAR(20) NOT NULL
-		CHECK (status_code IN ('NORMAL', 'WARNING', 'RISK')),	-- 예측 상태
-	risk_score NUMERIC(6, 4),									-- 위험 점수
-	fault_prob_7d NUMERIC(6, 4),								-- 7일 내 고장 확률
-	ttr_hours NUMERIC(10, 2),									-- 예상 고장까지 남은 시간 (h)
-	main_reason VARCHAR(255),									-- 주요 원인
-	action_message VARCHAR(255),								-- 조치 문구
-	model_version VARCHAR(50),									-- 모델 버전
-	create_time TIMESTAMP NOT NULL DEFAULT now()				-- 등록 일시
-);
--- 17. 예지보전: 점검/전원차단 요청 이력
-CREATE TABLE ev_maintenance_request (
-	ev_maintenance_request_id SERIAL PRIMARY KEY,	-- PK
-	ev_charger_id INTEGER NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),		-- FK (ev_charger)
-	
-	request_type VARCHAR(20) NOT NULL
-		CHECK (request_type IN ('CHECK', 'POWER_OFF')),										-- 요청 유형
-	request_reason VARCHAR(255) NOT NULL,													-- 요청 사유
-	request_status VARCHAR(20) NOT NULL DEFAULT 'REQUESTED'
-		CHECK (request_status IN ('REQUESTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),	-- 요청 상태
-	requested_dept VARCHAR(100) NOT NULL DEFAULT '시설관리팀',								-- 요청 부서
-	requested_at TIMESTAMP NOT NULL DEFAULT now(),											-- 요청 시각
-	
-	processed_at TIMESTAMP,							-- 처리 시각
-	processed_note VARCHAR(255),					-- 처리 메모
-	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 등록 일시
-);
-
--- ==================================================
-
--- 객체추적: 과속 단속 로그
-
--- ==================================================
-
--- 행정 부서
-CREATE TABLE admin_dept (
-	admin_dept_id SERIAL PRIMARY KEY,		-- PK
-	admin_dept_name VARCHAR(50) NOT NULL,	-- 행정 부서 이름
-	dept_location VARCHAR(100),				-- 부서 위치
-	dept_phone_number VARCHAR(20)			-- 부서 전화번호
-);
--- 행정직
-CREATE TABLE admin_staff (
-	admin_staff_id SERIAL PRIMARY KEY,				-- PK
-	mem_id INTEGER NOT NULL
-		REFERENCES mem(mem_id) ON DELETE CASCADE,	-- FK (mem)
-	admin_dept_id INTEGER
-		REFERENCES admin_dept(admin_dept_id),		-- FK (admin_dept)
-		
-	rank VARCHAR(20),								-- 직급
-	emp_number VARCHAR(50) UNIQUE NOT NULL,				-- 사원번호
-	status VARCHAR(20) NOT NULL DEFAULT '재직',		-- 재직 상태
-	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 가입 일시
-);
 -- 고객의소리
 CREATE TABLE voc (
 	voc_id SERIAL PRIMARY KEY,						-- PK
@@ -419,26 +378,22 @@ CREATE TABLE health_story (
 
 
 
-DELETE FROM health_story;
-DELETE FROM faq;
-DELETE FROM notice;
-DELETE FROM voc;
-DELETE FROM admin_staff;
-DELETE FROM admin_dept;
-DELETE FROM ev_maintenance_request;
-DELETE FROM ev_prediction_result;
-DELETE FROM ev_charger_sensor_history;
-DELETE FROM ev_charger_status_log;
 DELETE FROM ev_charging_log;
 DELETE FROM ev_charger;
 DELETE FROM receipt;
 DELETE FROM parking_spot;
 DELETE FROM parking_log;
 DELETE FROM reservation;
+DELETE FROM health_story;
+DELETE FROM faq;
+DELETE FROM notice;
+DELETE FROM voc;
 DELETE FROM med_staff;
-DELETE FROM med_dept;
+DELETE FROM admin_staff;
 DELETE FROM member_vehicle;
 DELETE FROM payment_method;
+DELETE FROM admin_dept;
+DELETE FROM med_dept;
 DELETE FROM mem;
 
 
@@ -452,18 +407,18 @@ SELECT * FROM payment_method;
 SELECT * FROM member_vehicle;
 SELECT * FROM med_dept;
 SELECT * FROM med_staff;
+SELECT * FROM admin_dept;
+SELECT * FROM admin_staff;
 SELECT * FROM reservation;
+
 SELECT * FROM parking_log;
+
 SELECT * FROM parking_spot;
 SELECT * FROM receipt;
 SELECT * FROM ev_charger;
 SELECT * FROM ev_charging_log;
-SELECT * FROM ev_charger_status_log;
-SELECT * FROM ev_charger_sensor_history;
-SELECT * FROM ev_prediction_result;
-SELECT * FROM ev_maintenance_request;
-SELECT * FROM admin_dept;
-SELECT * FROM admin_staff;
+SELECT * FROM parking_prediction;
+SELECT * FROM holiday;
 SELECT * FROM voc;
 SELECT * FROM notice;
 SELECT * FROM faq;
@@ -865,87 +820,71 @@ INSERT INTO health_story (admin_staff_id, title, content, thumbnail_img, write_d
 
 
 
--- ================================================
--- 예약 데이터 삽입 (평일 09:00~18:00, 토요일 09:00~12:00)
--- 대상 기간: 2026-03-30 ~ 2026-04-10 (일요일·공휴일 제외)
--- 슬롯당 진료과별 3명씩 예약
--- ================================================
+
 INSERT INTO reservation (
-    mem_id, med_dept_id, doctor_id,
-    reservation_date, reservation_time,
-    reservation_type, visit_type
+    mem_id, med_dept_id, doctor_id, 
+    reservation_date, reservation_time, 
+    reservation_type, visit_type, reservation_status
 )
-SELECT
-    (1 + (FLOOR(RANDOM() * 100))::INT)                              AS mem_id,
-    dept_id                                                          AS med_dept_id,
-    doctor_id,
-    rdate                                                            AS reservation_date,
-    rtime                                                            AS reservation_time,
-    '외래'                                                           AS reservation_type,
-    CASE WHEN RANDOM() > 0.6 THEN '재진' ELSE '초진' END            AS visit_type
-FROM
-    -- 날짜 시계열 (일요일·공휴일 제외)
-    (
-        SELECT d::DATE AS rdate
-        FROM generate_series(
-            '2026-03-30'::DATE,
-            '2026-04-10'::DATE,
-            '1 day'::INTERVAL
-        ) d
-        WHERE EXTRACT(DOW FROM d) <> 0
-          AND d::DATE NOT IN (SELECT holiday_date FROM holiday)
-    ) dates
-
-    -- 평일/토요일 시간 슬롯 분기
-    CROSS JOIN LATERAL (
-        SELECT t::TIME AS rtime
-        FROM generate_series(
-            '2000-01-01 09:00'::TIMESTAMP,
-            CASE WHEN EXTRACT(DOW FROM rdate) = 6
-                 THEN '2000-01-01 12:00'::TIMESTAMP
-                 ELSE '2000-01-01 18:00'::TIMESTAMP END,
-            '30 minutes'::INTERVAL
-        ) t
-    ) times
-
-    -- 진료과 9개
-    CROSS JOIN (
-        SELECT unnest(ARRAY[1,2,3,4,5,6,7,8,9]) AS dept_id
-    ) depts
-
-    -- 슬롯당 3명
-    CROSS JOIN (
-        SELECT generate_series(1, 3) AS patient_num
-    ) patients
-
-    -- 해당 진료과 의사 랜덤 선택
-    CROSS JOIN LATERAL (
-        SELECT med_staff_id AS doctor_id
-        FROM med_staff
-        WHERE med_dept_id = dept_id
-        ORDER BY RANDOM()
-        LIMIT 1
-    ) doctors;
-
--- 결과 확인
-SELECT
-    reservation_date,
-    TO_CHAR(reservation_date, 'Dy') AS 요일,
-    COUNT(*) AS 예약수
-FROM reservation
-GROUP BY reservation_date
-ORDER BY reservation_date;
-
--- ================================================
--- 예약 반영을 위해 해당 기간 기존 예측 데이터 삭제
--- (페이지 재방문 시 예약 포함 값으로 재예측됨)
--- ================================================
-DELETE FROM parking_prediction
-WHERE target_datetime::DATE BETWEEN '2026-03-30' AND '2026-04-10';
-
-SELECT COUNT(*) AS 삭제후_잔여_예측수 FROM parking_prediction;
-
-
+WITH date_range AS (
+    -- 1. 2026-03-30(월) ~ 2026-04-05(일) 일주일치 날짜 생성
+    SELECT ('2026-03-30'::DATE + (n || ' days')::interval)::DATE AS res_date,
+           EXTRACT(ISODOW FROM ('2026-03-30'::DATE + (n || ' days')::interval)) AS dow
+    FROM generate_series(0, 6) AS n
+),
+time_slots AS (
+    -- 2. 09:00 ~ 18:30 30분 단위 시간표 생성
+    SELECT (MAKE_TIME(h, m, 0))::TIME AS res_time
+    FROM generate_series(9, 18) h, generate_series(0, 30, 30) m
+    WHERE (h < 18) OR (h = 18 AND m = 30)
+),
+valid_slots AS (
+    -- 3. 날짜와 시간을 합치되, 요일별 영업시간 규정 적용
+    SELECT d.res_date, d.dow, t.res_time
+    FROM date_range d
+    CROSS JOIN time_slots t
+    WHERE (d.dow <= 5 AND t.res_time <= '18:30'::TIME) -- 월~금: 18:30 마감
+       OR (d.dow = 6 AND t.res_time <= '12:30'::TIME)  -- 토: 12:30 마감 (일요일은 자동 제외됨)
+),
+slot_volumes AS (
+    -- 4. 시연용 트래픽 조절 (평일 파도타기 & 토요일 오전 러시)
+    SELECT 
+        res_date, res_time,
+        CASE 
+            WHEN dow <= 5 THEN -- 평일(월~금) 로직
+                CASE 
+                    WHEN res_time BETWEEN '09:00:00' AND '10:30:00' THEN floor(random() * 40 + 110)::int
+                    WHEN res_time BETWEEN '11:00:00' AND '13:00:00' THEN floor(random() * 20 + 30)::int
+                    WHEN res_time BETWEEN '13:30:00' AND '15:30:00' THEN floor(random() * 30 + 80)::int
+                    ELSE floor(random() * 20 + 20)::int
+                END
+            WHEN dow = 6 THEN -- 토요일 로직
+                CASE 
+                    WHEN res_time BETWEEN '09:00:00' AND '11:00:00' THEN floor(random() * 40 + 100)::int
+                    ELSE floor(random() * 20 + 40)::int
+                END
+        END as vol
+    FROM valid_slots
+),
+expanded_slots AS (
+    -- 5. 생성된 숫자만큼 행 뻥튀기
+    SELECT res_date, res_time
+    FROM slot_volumes
+    CROSS JOIN generate_series(1, vol)
+)
+SELECT 
+    (SELECT mem_id FROM mem ORDER BY random() LIMIT 1) AS mem_id,
+    dept.med_dept_id,
+    (SELECT med_staff_id FROM med_staff WHERE med_dept_id = dept.med_dept_id ORDER BY random() LIMIT 1) AS doctor_id,
+    s.res_date AS reservation_date,
+    s.res_time,
+    '일반진료',
+    CASE WHEN random() > 0.5 THEN '초진' ELSE '재진' END,
+    '예약'
+FROM expanded_slots s
+CROSS JOIN LATERAL (
+    SELECT (floor(random() * 10) + 1)::int AS med_dept_id
+) dept;
 
 
 
