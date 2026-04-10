@@ -25,8 +25,10 @@
 	        EXTRACT(EPOCH FROM (COALESCE(p.exit_time, NOW()) - p.entry_time))/60 AS duration
 	    FROM parking_log p
 	    LEFT JOIN admin_staff a ON p.admin_staff_id = a.admin_staff_id
-	    WHERE p.del = 0
-	    ORDER BY p.entry_time DESC
+	    WHERE vehicle_num = #{vehicleNum}
+		    AND exit_time IS NULL
+		    AND del = 0
+		ORDER BY entry_time DESC LIMIT 1
 	</select>
 
 	<!-- 출차 기록 업데이트 -->
@@ -48,7 +50,8 @@
             EXTRACT(EPOCH FROM (COALESCE(p.exit_time, NOW()) - p.entry_time))/60 AS duration
         FROM parking_log p
         LEFT JOIN admin_staff a ON p.admin_staff_id = a.admin_staff_id
-        ORDER BY p.entry_time DESC
+        WHERE p.del = 0
+		ORDER BY p.entry_time DESC
     </select>
 
 	<!-- 주차 로그 수정 -->
