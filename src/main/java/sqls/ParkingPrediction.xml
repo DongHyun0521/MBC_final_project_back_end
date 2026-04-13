@@ -108,22 +108,22 @@
     <!-- 중기 입차 그래프 데이터 가져오기 (운영시간 30분 슬롯 평균) -->
     <select id="getMidTermChartData" resultType="map">
 	    SELECT
-	        TO_CHAR(target_datetime, 'YYYY-MM-DD') AS "date",
-	        ROUND(AVG(predicted_cars)) AS "predictedCars",
-	        BOOL_OR(is_holiday) AS "isHoliday"
-	    FROM parking_prediction
-	    WHERE target_datetime::date BETWEEN #{startDate} AND #{endDate}
-	      AND forecast_type = 'mid'
+	        TO_CHAR(p.target_datetime, 'YYYY-MM-DD') AS "date",
+	        ROUND(AVG(p.predicted_cars)) AS "predictedCars",
+	        BOOL_OR(p.is_holiday) AS "isHoliday",
+	        MAX(h.holiday_name) AS "holidayName" FROM parking_prediction p
+	    LEFT JOIN holiday h ON p.target_datetime::date = h.holiday_date WHERE p.target_datetime::date BETWEEN #{startDate} AND #{endDate}
+	      AND p.forecast_type = 'mid'
 	      AND (
-	          is_holiday = true
-	          OR EXTRACT(DOW FROM target_datetime) = 0
-	          OR (    EXTRACT(DOW FROM target_datetime) = 6
-	              AND EXTRACT(HOUR FROM target_datetime) BETWEEN 9 AND 12)
-	          OR (    EXTRACT(DOW FROM target_datetime) NOT IN (0, 6)
-	              AND is_holiday = false
-	              AND EXTRACT(HOUR FROM target_datetime) BETWEEN 9 AND 18)
+	          p.is_holiday = true
+	          OR EXTRACT(DOW FROM p.target_datetime) = 0
+	          OR (    EXTRACT(DOW FROM p.target_datetime) = 6
+	              AND EXTRACT(HOUR FROM p.target_datetime) BETWEEN 9 AND 12)
+	          OR (    EXTRACT(DOW FROM p.target_datetime) NOT IN (0, 6)
+	              AND p.is_holiday = false
+	              AND EXTRACT(HOUR FROM p.target_datetime) BETWEEN 9 AND 18)
 	      )
-	    GROUP BY TO_CHAR(target_datetime, 'YYYY-MM-DD')
+	    GROUP BY TO_CHAR(p.target_datetime, 'YYYY-MM-DD')
 	    ORDER BY "date" ASC
 	</select>
 

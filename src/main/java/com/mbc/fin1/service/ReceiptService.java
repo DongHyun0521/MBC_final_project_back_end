@@ -18,7 +18,7 @@ public class ReceiptService {
     private ReceiptDao receiptDao;
     
     @Autowired
-    private ParkingService parkingService; // 💡 주차 반장님 소환!
+    private ParkingLogService parkingLogService; // 💡 주차 반장님 소환!
 
     // 결제 정보 저장 및 출차 처리 지시
     public void processReceipt(ReceiptDto receiptDto) {
@@ -31,8 +31,5 @@ public class ReceiptService {
 
         // 2. 결제 내역(영수증) DB 저장
         receiptDao.insertReceipt(receiptDto);
-        
-        // 3. 결제가 완료되었으므로 주차 반장에게 "차단기 열어주세요!" 지시
-        parkingService.completePaidExit(receiptDto.getParkingLogId(), pFee);
     }
 }

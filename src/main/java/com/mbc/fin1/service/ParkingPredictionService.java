@@ -11,10 +11,13 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -35,6 +38,13 @@ public class ParkingPredictionService {
     
     private final RestTemplate restTemplate = new RestTemplate();
     
+    private final Map<String, AtomicInteger> apiCallCounts = new ConcurrentHashMap<>() {{
+        put("KMA_ULTRA", new AtomicInteger(0));		// 초단기
+        put("KMA_VILAGE", new AtomicInteger(0));	// 단기
+        put("KMA_MID", new AtomicInteger(0));		// 중기
+        put("AIR_KOREA", new AtomicInteger(0));		// 대기질
+    }};
+    
     // ========== 실시간 API 캐시 저장소 ==========
 
     // 기상청 초단기 실시간 API 캐시 저장소
@@ -51,13 +61,116 @@ public class ParkingPredictionService {
     private String cachedMidTmFc = "";
     
     // 에어코리아 초단기 대기질 실시간 API 캐시 저장소
-    private Map<String, Double> cachedAirKorea = null;
+    private Map<String, Double> cachedAirKorea = new ConcurrentHashMap<>() {{
+        put("pm10", 40.0);
+        put("pm25", 15.0);
+    }};
     private LocalDateTime airKoreaCacheTime = LocalDateTime.MIN;
     
     // 에어코리아 단기 대기질 실시간 API 캐시 저장소
-    private Map<String, Integer> cachedAirKoreaForecast = null;
+    private Map<String, Map<String, Integer>> cachedAirKoreaForecastMap = new ConcurrentHashMap<>();
     private LocalDate cachedForecastTargetDate = null;
     private LocalDate cachedForecastCallDate = null;
+    
+    // 일 API 사용량 알려주는 함수
+    @Scheduled(cron = "0 0 0 * * *")
+    public void resetApiCounters() {
+        System.out.println("======= [API Usage Daily Report] =======");
+        apiCallCounts.forEach((name, count) -> {
+            System.out.println(name + " : " + count.get() + " calls today.");
+            count.set(0); // 초기화
+        });
+        System.out.println("========================================");
+    }
+    
+    // ==========================================================
+    // ⏰ [스케줄러] 대기질 API 백그라운드 갱신 로직 추가
+    // ==========================================================
+    
+    // 1. 실시간 대기질: 매시 15분마다 실행 (하루 딱 24번 호출)
+    @Scheduled(cron = "0 15 * * * *")
+    public void fetchAirKoreaRealTimeBackground() {
+        int current = apiCallCounts.get("AIR_KOREA").incrementAndGet();
+        try {
+            String url = String.format("http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=%s&returnType=json&numOfRows=1&pageNo=1&stationName=종로구&dataTerm=DAILY&ver=1.0", API_KEY);
+            
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> respMap = (Map<String, Object>) response.get("response");
+            Map<String, Object> bodyMap = (Map<String, Object>) respMap.get("body");
+            List<Map<String, Object>> itemList = (List<Map<String, Object>>) bodyMap.get("items");
+
+            if (itemList != null && !itemList.isEmpty()) {
+                Map<String, Object> item = itemList.get(0);
+                Map<String, Double> newCache = new ConcurrentHashMap<>();
+                if (item.get("pm10Value") != null && !item.get("pm10Value").equals("-")) {
+                    newCache.put("pm10", Double.parseDouble((String) item.get("pm10Value")));
+                } else { newCache.put("pm10", 40.0); }
+                
+                if (item.get("pm25Value") != null && !item.get("pm25Value").equals("-")) {
+                    newCache.put("pm25", Double.parseDouble((String) item.get("pm25Value")));
+                } else { newCache.put("pm25", 15.0); }
+                
+                cachedAirKorea = newCache;
+                airKoreaCacheTime = LocalDateTime.now();
+                System.out.println("✅ [백그라운드] 실시간 대기질 갱신 완료! (오늘 누적: " + current + "회)");
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ [백그라운드] 실시간 대기질 갱신 실패: " + e.getMessage());
+        }
+    }
+
+    // 2. 예보 대기질: 하루 4번(05, 11, 17, 23시 10분)만 실행 (하루 딱 4번 호출)
+    @Scheduled(cron = "0 10 5,11,17,23 * * *")
+    public void fetchAirKoreaForecastBackground() {
+        int current = apiCallCounts.get("AIR_KOREA").incrementAndGet();
+        try {
+            String url = String.format(
+                "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth?serviceKey=%s&returnType=json&numOfRows=50&pageNo=1&searchDate=%s&ver=1.1",
+                API_KEY, LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            );
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> respMap = (Map<String, Object>) response.get("response");
+            Map<String, Object> bodyMap = (Map<String, Object>) respMap.get("body");
+            List<Map<String, Object>> itemList = (List<Map<String, Object>>) bodyMap.get("items");
+
+            if (itemList != null) {
+                Map<String, Map<String, Integer>> newForecastMap = new ConcurrentHashMap<>();
+                for (Map<String, Object> item : itemList) {
+                    String informData = (String) item.get("informData"); 
+                    String code = (String) item.get("informCode");  
+                    String gradeStr = (String) item.get("informGrade");  
+
+                    if (informData == null || gradeStr == null) continue;
+
+                    String seoulGrade = null;
+                    for (String part : gradeStr.split(",")) {
+                        if (part.contains("서울")) {
+                            seoulGrade = part.split(":")[1].trim();
+                            break;
+                        }
+                    }
+                    if (seoulGrade == null) continue;
+
+                    int grade = switch (seoulGrade) {
+                        case "좋음"     -> 0;
+                        case "보통"     -> 1;
+                        case "나쁨"     -> 2;
+                        case "매우나쁨" -> 3;
+                        default         -> 1;
+                    };
+
+                    newForecastMap.putIfAbsent(informData, new HashMap<>());
+                    if ("PM10".equals(code)) newForecastMap.get(informData).put("pm10Grade", grade);
+                    if ("PM25".equals(code)) newForecastMap.get(informData).put("pm25Grade", grade);
+                }
+                cachedAirKoreaForecastMap = newForecastMap;
+                cachedForecastCallDate = LocalDate.now();
+                System.out.println("✅ [백그라운드] 예보 대기질 갱신 완료! (오늘 누적: " + current + "회)");
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ [백그라운드] 예보 대기질 파싱 에러: " + e.getMessage());
+        }
+    }
     
     // ========== 실시간 API 연동 입차 대수 예측 ==========
 
@@ -97,7 +210,6 @@ public class ParkingPredictionService {
             }
         }
     }
-
 
     // 초단기/단기: 입차 예측 데이터 반환
     public List<Map<String, Object>> getShortTermChartData(LocalDate startDate, LocalDate endDate) {
@@ -157,8 +269,6 @@ public class ParkingPredictionService {
             }
         }
     }
-
-
 
     // 중기: parking_prediction에 해당 일 데이터가 없을 시, 채우기
     private void checkAndGenerateMidTermMissingData(LocalDate targetDate) {
@@ -237,7 +347,6 @@ public class ParkingPredictionService {
             else if (wfStr.contains("눈")) { rainfallMm = 0.0; snowfallCm = 3.0; }
             else rainfallMm = 0.0;
 
-            
             Map<String, Double> midAirQuality = getAirKoreaRealTime();
             double midPm10 = midAirQuality.getOrDefault("pm10", 40.0);
             double midPm25 = midAirQuality.getOrDefault("pm25", 15.0);
@@ -400,6 +509,10 @@ public class ParkingPredictionService {
 
             // 발표 날짜 및 시간이 다르다면, API 호출 (같으면 if문 건너뛰기)
             if (cachedUltraItems == null || !currentBase.equals(cachedUltraBaseDateTime)) {
+                // 🔥 실제 API 통신이 일어날 때만 카운터 증가!
+                int current = apiCallCounts.get("KMA_ULTRA").incrementAndGet();
+                System.out.println("🌐 [초단기] 실제 API 통신 발생 (" + current + " / 10,000)");
+                
             	System.out.println("=> 기상청 초단기 (getUltraSrtFcst) 호출 시작 | " + new Date());
             	
                 String url = String.format("http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst?serviceKey=%s&pageNo=1&numOfRows=100&dataType=JSON&base_date=%s&base_time=%s&nx=60&ny=127", API_KEY, baseDate, baseTime);
@@ -459,6 +572,10 @@ public class ParkingPredictionService {
 
             // 발표 날짜 및 시간이 다르다면, API 호출 (같으면 if문 건너뛰기)
             if (cachedVilageItems == null || !currentBase.equals(cachedVilageBaseDateTime)) {
+                // 🔥 실제 API 통신이 일어날 때만 카운터 증가!
+                int current = apiCallCounts.get("KMA_VILAGE").incrementAndGet();
+                System.out.println("🌐 [단기] 실제 API 통신 발생 (" + current + " / 10,000)");
+
             	System.out.println("=> 기상청 단기 (getVilageFcst) 호출 시작 | " + new Date());
                 String url = String.format("http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=%s&pageNo=1&numOfRows=500&dataType=JSON&base_date=%s&base_time=%s&nx=60&ny=127", API_KEY, baseDate, baseTime);
                 
@@ -507,6 +624,10 @@ public class ParkingPredictionService {
 
             // 발표 날짜 및 시간이 다르다면, API 호출 (같으면 if문 건너뛰기)
             if (cachedMidTaItems == null || cachedMidLandItems == null || !tmFc.equals(cachedMidTmFc)) {
+                // 🔥 실제 API 통신이 일어날 때만 카운터 증가!
+                int current = apiCallCounts.get("KMA_MID").incrementAndGet();
+                System.out.println("🌐 [중기] 실제 API 통신 발생 (" + current + " / 10,000)");
+
             	System.out.println("=> 기상청 중기 호출 시작 | " + new Date());
                 
                 System.out.println("=> 기상청 중기 (기온) 호출 시작 | " + new Date());
@@ -553,122 +674,36 @@ public class ParkingPredictionService {
     private Map<String, Double> getAirKoreaRealTime() {
     	System.out.println("=> ParkingPredictionService: getAirKoreaRealTime | "+ new Date());
     	
-    	// 30분 이내 재호출 시, API 미호출 (429 Error: Too Many Requests 방지 목적)
-        LocalDateTime now = LocalDateTime.now();
-        if (cachedAirKorea != null && ChronoUnit.MINUTES.between(airKoreaCacheTime, now) < 30) {
+        // API 호출 부분 삭제 (스케줄러가 채워둔 캐시 반환)
+        if (cachedAirKorea != null) {
             return cachedAirKorea;
         }
-
-        Map<String, Double> result = new HashMap<>();
-        try {
-        	System.out.println("=> 에어코리아 대기질 호출 시작 | " + new Date());
-        	
-            String url = String.format("http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=%s&returnType=json&numOfRows=1&pageNo=1&stationName=종로구&dataTerm=DAILY&ver=1.0", API_KEY);
-            
-            // JSON 파싱 작업
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-            Map<String, Object> respMap = (Map<String, Object>) response.get("response");
-            Map<String, Object> bodyMap = (Map<String, Object>) respMap.get("body");
-            List<Map<String, Object>> itemList = (List<Map<String, Object>>) bodyMap.get("items");
-
-            // 타겟 날짜의 초/미세먼지 값 가져오기
-            if (itemList != null && !itemList.isEmpty()) {
-                Map<String, Object> item = itemList.get(0);
-                // 미세먼지가 결측값(-)이 아닐 때만 숫자로 변환
-                if (item.get("pm10Value") != null && !item.get("pm10Value").equals("-")) {
-                    result.put("pm10", Double.parseDouble((String) item.get("pm10Value")));
-                }
-                // 초미세먼지가 결측값(-)이 아닐 때만 숫자로 변환
-                if (item.get("pm25Value") != null && !item.get("pm25Value").equals("-")) {
-                    result.put("pm25", Double.parseDouble((String) item.get("pm25Value")));
-                }
-            }
-            // 파싱한 JSON 데이터를 리스트맵에 저장
-            cachedAirKorea = result;
-            airKoreaCacheTime = now;
-            
-            System.out.println("=> 에어코리아 대기질 호출 종료 | " + new Date());
-        } catch (Exception e) {
-            System.err.println("!! 에어코리아 대기질 호출 에러: " + e.getMessage());
-        }
-     // API 호출 성공 시 result에 값이 있고, 실패 시 비어있음
-     // 실패했을 때 이전 캐시가 있으면 캐시를 대신 반환, 없으면 빈 map 반환
-     if (result.isEmpty() && cachedAirKorea != null) {
-         System.out.println("⚠️ 에어코리아 API 실패 - 이전 캐시값으로 대체합니다.");
-         return cachedAirKorea;
-     }
-     return result;
+        
+        Map<String, Double> defaultMap = new HashMap<>();
+        defaultMap.put("pm10", 40.0);
+        defaultMap.put("pm25", 15.0);
+        return defaultMap;
     }
     
     // 대기질 단기 (서울): 오늘, 내일, 모레
     @SuppressWarnings("unchecked")
     private Map<String, Integer> getAirKoreaForecastGrade(LocalDate targetDate) {
-    	if (cachedAirKoreaForecast != null
-    	        && targetDate.equals(cachedForecastTargetDate)
-    	        && LocalDate.now().equals(cachedForecastCallDate)) {
-    	    return cachedAirKoreaForecast;
-    	}
-    	
-        Map<String, Integer> result = new HashMap<>();
-        try {
-            String url = String.format(
-                "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMinuDustFrcstDspth" +
-                "?serviceKey=%s&returnType=json&numOfRows=50&pageNo=1&searchDate=%s&ver=1.1",
-                API_KEY,
-                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-            );
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-            Map<String, Object> respMap = (Map<String, Object>) response.get("response");
-            Map<String, Object> bodyMap = (Map<String, Object>) respMap.get("body");
-            List<Map<String, Object>> itemList = (List<Map<String, Object>>) bodyMap.get("items");
-
-            String targetDateStr = targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")); // ← 추가
-
-            if (itemList != null) {
-                for (Map<String, Object> item : itemList) {
-                    // ↓ 추가: 예측하려는 날짜의 예보만 사용
-                    String informData = (String) item.get("informData");
-                    if (!targetDateStr.equals(informData)) continue;
-
-                    String code = (String) item.get("informCode");  // "PM10" or "PM25"
-                    String gradeStr = (String) item.get("informGrade");  // "서울 : 보통,경기남부 : 나쁨,..."
-
-                    if (gradeStr == null) continue;
-
-                    // 서울 등급만 파싱
-                    String seoulGrade = null;
-                    for (String part : gradeStr.split(",")) {
-                        if (part.contains("서울")) {
-                            seoulGrade = part.split(":")[1].trim();
-                            break;
-                        }
-                    }
-                    if (seoulGrade == null) continue;
-
-                    int grade = switch (seoulGrade) {
-                        case "좋음"     -> 0;
-                        case "보통"     -> 1;
-                        case "나쁨"     -> 2;
-                        case "매우나쁨" -> 3;
-                        default         -> 1;
-                    };
-
-                    if ("PM10".equals(code)) result.put("pm10Grade", grade);
-                    if ("PM25".equals(code)) result.put("pm25Grade", grade);
-                }
-            }
-            System.out.println("🔄 에어코리아 대기질 예보 API 호출 완료 [" + targetDateStr + "] → PM10등급:"
-                + result.get("pm10Grade") + " PM25등급:" + result.get("pm25Grade")); // ← targetDateStr 추가
-        } catch (Exception e) {
-            System.err.println("⚠️ 에어코리아 예보 등급 파싱 에러: " + e.getMessage());
-        }
-        if (result.isEmpty()) {
-            System.err.println("⚠️ [" + targetDate + "] 대기질 예보 등급 없음 → 기본값(보통=1) 사용");
-        }
-        cachedAirKoreaForecast = result.isEmpty() ? cachedAirKoreaForecast : result;
-        cachedForecastTargetDate = targetDate;
-        cachedForecastCallDate = LocalDate.now();
+        String targetDateStr = targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         
+        // 스케줄러가 채워둔 캐시 반환
+        Map<String, Integer> result = cachedAirKoreaForecastMap.get(targetDateStr);
+        
+        if (result == null) {
+            result = new HashMap<>();
+            result.put("pm10Grade", 1);
+            result.put("pm25Grade", 1);
+        }
+        
+        // 30분 이내 재호출 시, API 미호출 (429 Error: Too Many Requests 방지 목적)
+        // API 호출 성공 시 result에 값이 있고, 실패 시 비어있음
+        // 실패했을 때 이전 캐시가 있으면 캐시를 대신 반환, 없으면 빈 map 반환
+        // ↓ 추가: 예측하려는 날짜의 예보만 사용
+        // 서울 등급만 파싱
         return result;
     }
     
