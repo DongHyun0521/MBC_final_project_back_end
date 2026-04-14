@@ -24,6 +24,6 @@ public class WebConfigurer implements WebMvcConfigurer {
    @Override
    public void addResourceHandlers(ResourceHandlerRegistry registry) {
 	   registry.addResourceHandler("/images/**")
-       .addResourceLocations("file:///C:/springBootSample/mbcFinalProject1/images/");
+       .addResourceLocations("file:///C:/Users/User/Documents/MBC_finalProject/MBC_Project_Back/license_plates_AIhub/");
 }
 }
