@@ -37,3 +37,10 @@ build/
 .metadata/
 bin/.metadata/
 *.log
+
+images/plates/
+images/vehicle/
+license_plates/
+license_plates_AIhub/
+**/.DS_Store
+**/.$*.bkp
