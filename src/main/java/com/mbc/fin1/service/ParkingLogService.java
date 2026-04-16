@@ -70,8 +70,9 @@ public class ParkingLogService {
         log.setVehicleNum(rawNum != null ? rawNum.replace(" ", "") : null);
 
         // OCR 실패 → 이미지 저장 안 함, DB 저장 안 함
-        if ("Unknown".equals(log.getVehicleNum()) || log.getVehicleNum() == null || log.getVehicleNum().isEmpty()) {
-            log.setVehicleNum("Unknown");
+        String vNum = log.getVehicleNum();
+        if (vNum == null || vNum.isEmpty() || "Unknown".equals(vNum) || "인식불가".equals(vNum)) {
+            log.setVehicleNum("인식불가");
             return log;
         }
 
