@@ -53,4 +53,10 @@ public interface AdminDao {
     void increaseHealthStoryReadCount(Long healthStoryId);		// 건강이야기 조회수 증가
     int updateHealthStory(HealthStoryDto dto);					// 건강이야기 수정
     int deleteHealthStory(Long healthStoryId);					// 건강이야기 삭제 (del=1)
+    
+    // =============================================================================
+    // [최종 프로젝트 추가] 관리자 대시보드 전용 인증
+    String findAdminEmpId(Map<String, String> params);								// 사원번호 찾기 (이름, 부서, 아이디, 이메일)
+    Map<String, Object> verifyAdminAndGetAdminInfo(Map<String, String> params);		// 관리자 로그인 인증 (부서, 사원번호)
+    
 }

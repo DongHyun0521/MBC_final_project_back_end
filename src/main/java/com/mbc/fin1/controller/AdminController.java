@@ -2,6 +2,7 @@
 package com.mbc.fin1.controller;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -66,13 +67,18 @@ public class AdminController {
         String deptName = adminService.getAdminDeptName(member.getMemId());
         boolean isWonmu = (deptName != null && deptName.contains("원무"));
         boolean isPr = (deptName != null && deptName.contains("홍보"));
+        
+        // [최종프로젝트 추가] 대시보드 접속 가능 부서인지 확인 (주차, 시설, 보안)
+        boolean isDashboardAllowed = (deptName != null && 
+            (deptName.contains("주차") || deptName.contains("시설") || deptName.contains("보안")));
 
         // 프론트엔드로 보낼 정보
         return Map.of(
             "isAdmin", true,
             "deptName", deptName != null ? deptName : "",
             "isWonmu", isWonmu,
-            "isPr", isPr
+            "isPr", isPr,
+            "isDashboardAllowed", isDashboardAllowed
         );
     }
     
@@ -443,4 +449,60 @@ public class AdminController {
             return "fail";
         }
     }
+    
+    // =============================================================================
+    // [최종 프로젝트 추가] 관리자 대시보드 관리 인증
+    // 대시보드 사원번호 찾기
+    @PostMapping("/find-id")
+    public Map<String, Object> findDashboardAdminId(@RequestBody Map<String, String> params) {
+        System.out.println("=> AdminController: findDashboardAdminId | " + new Date());
+        try {
+            // Service를 통해 DB에서 사원번호(empNumber) 조회
+            String empId = adminService.findAdminEmpId(params);
+            
+            if (empId != null && !empId.isEmpty()) {
+                return Map.of("is_success", true, "emp_id", empId);
+            }
+            return Map.of("is_success", false, "message", "일치하는 사원 정보가 없습니다");
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("is_success", false, "message", "서버 오류가 발생했습니다");
+        }
+    }
+    
+    // 대시보드 전용 로그인
+    @PostMapping("/dashboard-login")
+    public Map<String, Object> loginDashboardAdmin(@RequestBody Map<String, String> params, HttpSession session) {
+        System.out.println("=> AdminController: loginDashboardAdmin | " + new Date());
+        
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            Map<String, Object> adminData = adminService.verifyAdminAndGetAdminInfo(params);
+
+            if (adminData != null) {
+            	System.out.println("=> DB에서 넘어온 데이터 확인: " + adminData);
+            	
+                session.setAttribute("loginId", adminData.get("loginId"));
+                
+                result.put("is_success", true);
+                result.put("admin_name", adminData.get("adminname"));
+                
+                return result;
+            }
+            
+            // 데이터가 없을 때
+            result.put("is_success", false);
+            result.put("message", "부서 또는 사원번호가 일치하지 않습니다");
+            return result;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("is_success", false);
+            result.put("message", "로그인 처리 중 오류 발생");
+            return result;
+        }
+    }
+    
 }
