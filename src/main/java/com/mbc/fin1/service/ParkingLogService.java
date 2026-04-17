@@ -74,11 +74,12 @@ public class ParkingLogService {
 		String rawNum = (String) aiResult.get("vehicle_num");
 		log.setVehicleNum(rawNum != null ? rawNum.replace(" ", "") : null);
 
-		// OCR 실패 → 이미지 저장 안 함, DB 저장 안 함
-		if ("Unknown".equals(log.getVehicleNum()) || log.getVehicleNum() == null || log.getVehicleNum().isEmpty()) {
-			log.setVehicleNum("Unknown");
-			return log;
-		}
+        // OCR 실패 → 이미지 저장 안 함, DB 저장 안 함
+        String vNum = log.getVehicleNum();
+        if (vNum == null || vNum.isEmpty() || "Unknown".equals(vNum) || "인식불가".equals(vNum)) {
+            log.setVehicleNum("인식불가");
+            return log;
+        }
 
 		// 중복 입차 → 이미지 저장 안 함, DB 저장 안 함
 		ParkingLogDto existing = parkingLogDao.selectRecentEntryLog(log.getVehicleNum());

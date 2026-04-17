@@ -227,7 +227,7 @@ CREATE TABLE ev_charging_log (
     current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
 		CHECK (current_charge_kwh >= 0),								-- 현재 충전량
     remaining_minutes INTEGER 
-		CHECK (remaining_minutes IS NULL OR remaining_minutes >= 0),	-- 남은 시간
+		CHECK (remaining_minutes IS NULL OR remaining_minutes >= 0),-- 남은 시간
 	
     charge_status VARCHAR(20) NOT NULL DEFAULT 'READY' 
 		CHECK (charge_status IN ('READY', 'CHARGING', 'COMPLETE', 'STOPPED', 'FAULT')),	-- 충전 상태
@@ -827,9 +827,8 @@ INSERT INTO reservation (
     reservation_type, visit_type, reservation_status
 )
 WITH date_range AS (
-    -- 1. 2026-03-30(월) ~ 2026-04-05(일) 일주일치 날짜 생성
-    SELECT ('2026-03-30'::DATE + (n || ' days')::interval)::DATE AS res_date,
-           EXTRACT(ISODOW FROM ('2026-03-30'::DATE + (n || ' days')::interval)) AS dow
+    SELECT ('2026-04-10'::DATE + (n || ' days')::interval)::DATE AS res_date,
+           EXTRACT(ISODOW FROM ('2026-04-10'::DATE + (n || ' days')::interval)) AS dow
     FROM generate_series(0, 6) AS n
 ),
 time_slots AS (
