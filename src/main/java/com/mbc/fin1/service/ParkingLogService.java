@@ -157,7 +157,7 @@ public class ParkingLogService {
 		String vehicleNum = (String) aiResult.get("vehicle_num");
 		// 나라 정보가 없으면 기본값 "KR"로 설정 (키오스크 언어 전환 안전장치)
 				String country = (aiResult.get("license_plate_country") != null) 
-		                         ? (String) aiResult.get("license_plate_country") : "KR";
+		                         ? (String) aiResult.get("license_plate_country") : "KOR";
 				
 		// 차량 번호 공백 제거 및 유효성 검증
 		vehicleNum = (vehicleNum != null) ? vehicleNum.replace(" ", "") : "Unknown";
