@@ -827,8 +827,8 @@ INSERT INTO reservation (
     reservation_type, visit_type, reservation_status
 )
 WITH date_range AS (
-    SELECT ('2026-04-10'::DATE + (n || ' days')::interval)::DATE AS res_date,
-           EXTRACT(ISODOW FROM ('2026-04-10'::DATE + (n || ' days')::interval)) AS dow
+    SELECT ('2026-04-18'::DATE + (n || ' days')::interval)::DATE AS res_date,
+           EXTRACT(ISODOW FROM ('2026-04-18'::DATE + (n || ' days')::interval)) AS dow
     FROM generate_series(0, 6) AS n
 ),
 time_slots AS (
