@@ -309,5 +309,13 @@
           AND s.status = '재직'
         LIMIT 1
     </select>
+    
+    <!--대시보드 통계 예약 건수 조회-->
+    <select id="getTodayReservationCount" resultType="int">
+        SELECT COUNT(*)
+        FROM reservation
+        WHERE reservation_date = CURRENT_DATE
+    </select>
+    
 
 </mapper>

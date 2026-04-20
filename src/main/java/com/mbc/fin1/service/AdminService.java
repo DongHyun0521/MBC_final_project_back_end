@@ -332,4 +332,11 @@ public class AdminService {
         
         return adminDao.verifyAdminAndGetAdminInfo(params);
     }
+    
+    // 대시보드 통계 (오늘 예약 건수 조회)
+    public int getTodayReservationCount() {
+        System.out.println("=> AdminService: getTodayReservationCount | " + new Date());
+        
+        return adminDao.getTodayReservationCount();
+    }
 }

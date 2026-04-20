@@ -505,4 +505,27 @@ public class AdminController {
         }
     }
     
+    // [최종 프로젝트 추가] 관리자 대시보드 통계 (오늘 예약 건수)
+
+    @GetMapping("/reservation/today-count")
+    public int getTodayReservationCount(HttpSession session) {
+        System.out.println("=> AdminController: getTodayReservationCount | " + new Date());
+        
+        // 권한 체크 (대시보드 접근 권한이 있는지 확인)
+        String loginId = (String) session.getAttribute("loginId");
+        MemDto member = memService.getMemberInfo(loginId);
+        
+        if (loginId == null || member == null || !adminService.isAdmin(member.getMemId())) {
+            return 0; // 권한이 없거나 비로그인 상태면 0 반환
+        }
+
+        try {
+            // Service 계층을 호출하여 오늘 날짜의 예약 건수를 DB에서 가져옴
+            return adminService.getTodayReservationCount();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0; // 에러 발생 시 화면이 뻗지 않도록 0 반환
+        }
+    }
+    
 }
