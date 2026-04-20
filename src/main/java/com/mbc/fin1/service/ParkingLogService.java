@@ -138,8 +138,9 @@ public class ParkingLogService {
 
 		// 통신 객체 및 파일 전송용 헤더 설정
 		RestTemplate restTemplate = new RestTemplate();
-		restTemplate.getMessageConverters().add(0, new org.springframework.http.converter.StringHttpMessageConverter(java.nio.charset.StandardCharsets.UTF_8));
-		
+		restTemplate.getMessageConverters().add(0, new org.springframework.http.converter.StringHttpMessageConverter(
+				java.nio.charset.StandardCharsets.UTF_8));
+
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
