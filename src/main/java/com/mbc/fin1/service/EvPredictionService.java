@@ -18,7 +18,7 @@ public class EvPredictionService {
     @Value("${fastapi.base-url}")
     private String fastapiBaseUrl;
 
-    public EvPredictionDto getPrediction(Long chargerId) {
+    public EvPredictionDto getPrediction(String chargerId) {
         String url = fastapiBaseUrl + "/predict/db/" + chargerId;
 
         try {
