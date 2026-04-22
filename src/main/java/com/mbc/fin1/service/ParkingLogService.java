@@ -116,8 +116,9 @@ public class ParkingLogService {
         // 주차 자리 추천
         ParkingSpotDto spot = parkingSpotDao.findNearestAvailableSpot();
         if (spot != null) {
+            char rowLetter = (char) ('A' + spot.getParkingRow() - 1);
             saved.setRecommendedSpot(
-                spot.getParkingFloor() + "층 " + spot.getParkingRow() + "-" + spot.getParkingColumn()
+                "지하 " + spot.getParkingFloor() + "층 " + rowLetter + "-" + spot.getParkingColumn()
             );
         }
         return saved;
