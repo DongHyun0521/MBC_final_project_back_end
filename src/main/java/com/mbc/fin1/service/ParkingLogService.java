@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +33,10 @@ public class ParkingLogService {
     @Autowired private ParkingLogDao parkingLogDao;
     @Autowired private MemDao memDao;
     @Autowired private ParkingSpotDao parkingSpotDao;
+
+    // application.properties에서 주입 (프로젝트 루트/images)
+    @Value("${app.upload.dir}")
+    private String uploadDir;
 
     // 파이썬 서버 연동
     private final String PYTHON_URL = "http://localhost:8001/license-plates-recognition";
@@ -70,8 +75,9 @@ public class ParkingLogService {
         log.setVehicleNum(rawNum != null ? rawNum.replace(" ", "") : null);
 
         // OCR 실패 → 이미지 저장 안 함, DB 저장 안 함
-        if ("Unknown".equals(log.getVehicleNum()) || log.getVehicleNum() == null || log.getVehicleNum().isEmpty()) {
-            log.setVehicleNum("Unknown");
+        String vNum = log.getVehicleNum();
+        if (vNum == null || vNum.isEmpty() || "Unknown".equals(vNum) || "인식불가".equals(vNum)) {
+            log.setVehicleNum("인식불가");
             return log;
         }
 
@@ -83,18 +89,17 @@ public class ParkingLogService {
         }
 
         // ── 여기까지 통과해야만 이미지 저장 ──
-        String imgBase = "C:\\springBootSample\\mbcFinalProject1\\images";
-        java.nio.file.Files.createDirectories(java.nio.file.Paths.get(imgBase, "vehicle"));
-        java.nio.file.Files.createDirectories(java.nio.file.Paths.get(imgBase, "plates"));
+        java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "vehicle"));
+        java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "plates"));
 
         String vFilename = "car_" + UUID.randomUUID().toString().replace("-", "") + ".jpg";
         String pFilename = "plate_" + UUID.randomUUID().toString().replace("-", "") + ".jpg";
 
-        java.nio.file.Files.write(java.nio.file.Paths.get(imgBase, "vehicle", vFilename), fileBytes);
-        
+        java.nio.file.Files.write(java.nio.file.Paths.get(uploadDir, "vehicle", vFilename), fileBytes);
+
         String plateBase64 = (String) aiResult.get("plate_img_base64");
         byte[] plateBytes = java.util.Base64.getDecoder().decode(plateBase64);
-        java.nio.file.Files.write(java.nio.file.Paths.get(imgBase, "plates", pFilename), plateBytes);
+        java.nio.file.Files.write(java.nio.file.Paths.get(uploadDir, "plates", pFilename), plateBytes);
 
         log.setVehicleImg("/images/vehicle/" + vFilename);
         log.setLicensePlateImg("/images/plates/" + pFilename);

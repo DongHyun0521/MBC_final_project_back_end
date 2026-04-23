@@ -11,4 +11,4 @@ public class MbcFinalProject1Application {
 	public static void main(String[] args) {
 		SpringApplication.run(MbcFinalProject1Application.class, args);
 	}
-}
+}	
