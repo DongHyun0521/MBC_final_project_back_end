@@ -11,8 +11,8 @@ import com.mbc.fin1.dto.ParkingSpotDto;
 @Mapper
 @Repository
 public interface ParkingSpotDao {
-    ParkingSpotDto findNearestAvailableSpot();		// 입구로부터 가장 가까운 전기차 충전기 주차 자리 찾기
-    ParkingSpotDto findNearestAvailableEvSpot();	// 입구로부터 가장 가까운 주차 자리 찾기
+    ParkingSpotDto findNearestAvailableSpot();		// 일반 차량: 입구로부터 맨해튼 거리 최단 주차 자리 (충전기 없는 자리)
+    ParkingSpotDto findNearestAvailableEvSpot();	// 한국 전기차: 입구로부터 맨해튼 거리 최단 전기차 충전기 자리
 
     void allocateSpot(@Param("spotId") Integer spotId, @Param("parkingLogId") Long parkingLogId);	// 주차 자리 매핑하기
     void freeSpotByLogId(Long parkingLogId);														// 주차 자리 출차하기

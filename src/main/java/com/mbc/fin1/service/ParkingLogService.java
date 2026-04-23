@@ -113,8 +113,21 @@ public class ParkingLogService {
         // DB에 저장된 값으로 재조회
         ParkingLogDto saved = parkingLogDao.findById(log.getParkingLogId().intValue());
 
-        // 주차 자리 추천
-        ParkingSpotDto spot = parkingSpotDao.findNearestAvailableSpot();
+        // 주차 자리 추천 (한국 전기차면 충전기 있는 자리, 아니면 일반 자리)
+        ParkingSpotDto spot;
+        boolean isKoreanEv = "KOR".equals(log.getLicensePlateCountry())
+                          && Boolean.TRUE.equals(log.getIsEvLicensePlate());
+
+        if (isKoreanEv) {
+            spot = parkingSpotDao.findNearestAvailableEvSpot();
+            // 전기차 충전기 자리가 모두 찼을 경우 → 일반 자리로 폴백
+            if (spot == null) {
+                spot = parkingSpotDao.findNearestAvailableSpot();
+            }
+        } else {
+            spot = parkingSpotDao.findNearestAvailableSpot();
+        }
+
         if (spot != null) {
             char rowLetter = (char) ('A' + spot.getParkingRow() - 1);
             saved.setRecommendedSpot(
