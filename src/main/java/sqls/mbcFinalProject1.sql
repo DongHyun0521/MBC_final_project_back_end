@@ -1,9 +1,15 @@
 
+DROP TABLE IF EXISTS ev_inspection_log;
+DROP TABLE IF EXISTS ev_issue_log;
+DROP TABLE IF EXISTS ev_prediction_result;
+DROP TABLE IF EXISTS ev_sensor_log;
 DROP TABLE IF EXISTS ev_charging_log;
 DROP TABLE IF EXISTS ev_charger;
 DROP TABLE IF EXISTS receipt;
+DROP TABLE IF EXISTS vehicle_tracks;
 DROP TABLE IF EXISTS parking_spot;
 DROP TABLE IF EXISTS parking_log;
+DROP TABLE IF EXISTS vehicle;
 DROP TABLE IF EXISTS reservation;
 DROP TABLE IF EXISTS health_story;
 DROP TABLE IF EXISTS faq;
@@ -40,7 +46,7 @@ CREATE TABLE mem (
 	del_time TIMESTAMP,								-- 탈퇴 일시
 	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 가입 일시
 );
--- 2. 결제 수단
+-- 2. 결제: 결제 수단
 CREATE TABLE payment_method (
 	payment_method_id SERIAL PRIMARY KEY,					-- PK
 	mem_id INTEGER NOT NULL 
@@ -91,7 +97,7 @@ CREATE TABLE med_staff (
 	status VARCHAR(20) NOT NULL DEFAULT '재직',		-- 재직 상태
 	create_time TIMESTAMP NOT NULL DEFAULT now()	-- 회원가입 일시
 );
--- 6. 진료 예약
+-- 6. 결제: 진료 예약
 CREATE TABLE reservation (
 	reservation_id SERIAL PRIMARY KEY,		-- PK
 	mem_id INTEGER NOT NULL
@@ -135,11 +141,11 @@ CREATE TABLE admin_staff (
 
 -- ==================================================
 
--- 9. 주차 기록
+-- 9. 번호판 인식, 객체추적, 결제: 주차 기록
 CREATE TABLE parking_log (
 	parking_log_id SERIAL PRIMARY KEY,			-- PK
 	reservation_id INTEGER 
-		REFERENCES reservation(reservation_id),	-- FK (reservation)
+		REFERENCES reservation(reservation_id),	-- FK (reservation) 
 	
 	vehicle_img VARCHAR(500) NOT NULL,	-- DB에 저장될 차량 이미지 경로 (/images/abc.jpg)
 	license_plate_img VARCHAR(500),		-- DB에 저장될 번호판 이미지 경로 (/images/abc.jpg)
@@ -165,7 +171,7 @@ CREATE TABLE parking_log (
 	modify_time TIMESTAMP,						-- 수정 시간
 	del INT DEFAULT 0							-- 삭제 여부
 );
--- 10. 주차장 구역
+-- 10. 번호판 인식, 객체추적: 주차장 구역
 CREATE TABLE parking_spot (
 	parking_spot_id SERIAL PRIMARY KEY,			-- PK
 	parking_log_id INTEGER DEFAULT NULL 
@@ -177,7 +183,7 @@ CREATE TABLE parking_spot (
 	
 	is_parked BOOLEAN NOT NULL DEFAULT FALSE	-- 주차 여부
 );
--- 11. 영수증
+-- 11. 결제: 영수증
 CREATE TABLE receipt(
 	receipt_id SERIAL PRIMARY KEY,					-- PK
 	mem_id INTEGER
@@ -197,48 +203,123 @@ CREATE TABLE receipt(
 
 -- 12. 예지보전: 전기차 충전기
 CREATE TABLE ev_charger (
-	ev_charger_id SERIAL PRIMARY KEY,				-- PK
-	parking_spot_id INTEGER UNIQUE NOT NULL
+	ev_charger_id VARCHAR(20) PRIMARY KEY,			-- PK
+	parking_spot_id INTEGER UNIQUE NOT NULL 
 		REFERENCES parking_spot(parking_spot_id),	-- FK (parking_spot)
-		
-	ev_charger_type VARCHAR(20) NOT NULL 
-		CHECK (ev_charger_type IN ('FAST', 'SLOW')),							-- 전기차 충전기 종류 (급속, 완속)
-	ev_charger_state VARCHAR(20) NOT NULL DEFAULT 'STANDBY' 
-		CHECK (ev_charger_state IN ('STANDBY', 'CHARGING', 'CHECK', 'RISK')),	-- 충전기 상태
-    ev_charger_power BOOLEAN NOT NULL DEFAULT TRUE								-- 전기차 충전기 전원
+
+	charger_type VARCHAR(10) NOT NULL 
+		CHECK (charger_type IN ('FAST', 'SLOW')),			-- 충전기 종류 (급속/완속)
+	charger_status VARCHAR(20) NOT NULL DEFAULT 'STANDBY' 
+		CHECK (charger_status IN (
+			'STANDBY', 'CHARGING', 'CHECK',
+			'RISK', 'FAULT', 'POWER_OFF')),					-- 충전기 상태
+	create_time TIMESTAMP NOT NULL DEFAULT now()			-- 등록 일시
 );
 -- 13. 예지보전: 전기차 충전 기록
 CREATE TABLE ev_charging_log (
-    ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
-	ev_charger_id INTEGER NOT NULL 
+	ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
+	ev_charger_id VARCHAR(20) NOT NULL
 		REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
-	parking_log_id INTEGER 
+	parking_log_id INTEGER
 		REFERENCES parking_log(parking_log_id),	-- FK (parking_log)
-		
-	vehicle_num VARCHAR(20),	-- 차량 번호
+
+	vehicle_number VARCHAR(20),			-- 차량 번호
+	start_time TIMESTAMP NOT NULL,		-- 충전 시작 시간
+	end_time TIMESTAMP,					-- 충전 종료 시간
+	ev_charging_fee INTEGER DEFAULT 0,	-- 충전 요금
 	
-    start_time TIMESTAMP NOT NULL,														-- 충전 시작 시간
-    end_time TIMESTAMP, 																-- 충전 종료 시간
-    charging_duration_minutes INTEGER 
-		CHECK (charging_duration_minutes IS NULL OR charging_duration_minutes >= 0),	-- 충전 시간(분)
-		
-    charged_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
-		CHECK (charged_kwh >= 0),										-- 총 충전량
-    current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
-		CHECK (current_charge_kwh >= 0),								-- 현재 충전량
-    remaining_minutes INTEGER 
-		CHECK (remaining_minutes IS NULL OR remaining_minutes >= 0),-- 남은 시간
-	
-    charge_status VARCHAR(20) NOT NULL DEFAULT 'READY' 
-		CHECK (charge_status IN ('READY', 'CHARGING', 'COMPLETE', 'STOPPED', 'FAULT')),	-- 충전 상태
-	end_reason_code VARCHAR(20) NOT NULL DEFAULT 'NORMAL' 
-		CHECK (end_reason_code IN ('NORMAL', 'FORCE_STOP', 'FAULT_STOP')),				-- 종료 사유
-    create_time TIMESTAMP NOT NULL DEFAULT now(),										-- 생성 시간
-    
-	CHECK (end_time IS NULL OR end_time >= start_time) -- 시간 정합성 체크
+	current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,	-- 현재 충전량
+	total_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,		-- 총 충전량
+
+	charging_status VARCHAR(20) NOT NULL DEFAULT 'READY'
+		CHECK (charging_status IN (
+			'READY', 'CHARGING', 'COMPLETED',
+			'FORCE_STOPPED', 'FAULT_STOPPED')),	-- 충전 상태
+	end_reason VARCHAR(100)						-- 종료 사유
 );
+-- 14. 예지보전: 전기차 센서 로그
+CREATE TABLE ev_sensor_log (
+	ev_sensor_log_id SERIAL PRIMARY KEY,			-- PK
+	ev_charger_id VARCHAR(20) NOT NULL
+		REFERENCES ev_charger(ev_charger_id),		-- FK (ev_charger)
 
+	measured_time TIMESTAMP NOT NULL DEFAULT now(),	-- 측정 시각
+	temperature NUMERIC(6, 2) NOT NULL,				-- 온도
+	voltage NUMERIC(8, 2) NOT NULL,					-- 전압
+	current NUMERIC(8, 2) NOT NULL					-- 전류
+);
+-- 15. 예지보전: 전기차 AI 예측 결과
+CREATE TABLE ev_prediction_result (
+	ev_prediction_result_id SERIAL PRIMARY KEY,	-- PK
+	ev_charger_id VARCHAR(20) NOT NULL
+		REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
 
+	predicted_time TIMESTAMP NOT NULL DEFAULT now(),		-- 예측 시각
+	ai_status VARCHAR(20) NOT NULL
+		CHECK (ai_status IN ('NORMAL', 'CHECK', 'RISK')),	-- AI 판정 상태
+
+	fault_prob_7d NUMERIC(8, 4),	-- 7일 내 고장확률
+	main_reason VARCHAR(200),		-- 주요 원인
+
+	prob_normal NUMERIC(8, 6),	-- 정상 확률
+	prob_check NUMERIC(8, 6),	-- 점검 확률
+	prob_risk NUMERIC(8, 6),	-- 위험 확률
+
+	temperature_value NUMERIC(6, 2),	-- 예측 시점 온도
+	voltage_value NUMERIC(8, 2),		-- 예측 시점 전압
+	current_value NUMERIC(8, 2)			-- 예측 시점 전류
+);
+-- 16. 예지보전: 전기차 장애/점검 이벤트
+CREATE TABLE ev_issue_log (
+	ev_issue_log_id SERIAL PRIMARY KEY,								-- PK
+	ev_charger_id VARCHAR(20) NOT NULL
+		REFERENCES ev_charger(ev_charger_id),						-- FK (ev_charger)
+	ev_prediction_result_id INTEGER
+		REFERENCES ev_prediction_result(ev_prediction_result_id),	-- FK (ev_prediction_result)
+
+	issue_status VARCHAR(20) NOT NULL
+		CHECK (issue_status IN ('CHECK', 'RISK')),				-- 이슈 상태
+	process_status VARCHAR(20) NOT NULL DEFAULT 'UNPROCESSED'
+		CHECK (process_status IN (
+			'UNPROCESSED', 'INSPECTION_SENT',
+			'CHECK_IN_PROGRESS', 'DONE')),						-- 처리 상태
+
+	occurred_time TIMESTAMP NOT NULL DEFAULT now(),	-- 발생 일시
+	detail_content VARCHAR(500) NOT NULL,			-- 상세 내역
+
+	temperature_flag BOOLEAN NOT NULL DEFAULT FALSE,	-- 온도 이상
+	voltage_flag BOOLEAN NOT NULL DEFAULT FALSE,		-- 전압 이상
+	current_flag BOOLEAN NOT NULL DEFAULT FALSE,		-- 전류 이상
+	power_off_done BOOLEAN NOT NULL DEFAULT FALSE		-- 강제 종료 여부
+);
+-- 17. 예지보전: 전기차 점검 요청
+CREATE TABLE ev_inspection_log (
+	ev_inspection_log_id SERIAL PRIMARY KEY,		-- PK
+	ev_issue_log_id INTEGER NOT NULL
+		REFERENCES ev_issue_log(ev_issue_log_id),	-- FK (ev_issue_log)
+	ev_charger_id VARCHAR(20) NOT NULL
+		REFERENCES ev_charger(ev_charger_id),		-- FK (ev_charger)
+	requested_by_admin_staff_id INTEGER
+		REFERENCES admin_staff(admin_staff_id),		-- FK (admin_staff)
+
+	request_status VARCHAR(20) NOT NULL DEFAULT 'REQUESTED'
+		CHECK (request_status IN (
+			'REQUESTED', 'READ',
+			'CHECK_IN_PROGRESS', 'DONE')),						-- 요청 상태
+	target_dept_name VARCHAR(50) NOT NULL DEFAULT '시설관리팀',		-- 대상 부서
+	
+	fault_prob_7d NUMERIC(8, 4),			-- 7일 내 고장확률
+	main_reason VARCHAR(200),				-- 주요 원인
+	request_reason VARCHAR(1000) NOT NULL,	-- 요청 사유
+
+	temperature_flag BOOLEAN NOT NULL DEFAULT FALSE,	-- 온도 이상
+	voltage_flag BOOLEAN NOT NULL DEFAULT FALSE,		-- 전압 이상
+	current_flag BOOLEAN NOT NULL DEFAULT FALSE,		-- 전류 이상
+
+	requested_time TIMESTAMP NOT NULL DEFAULT now(),	-- 요청 시간
+	read_time TIMESTAMP,								-- 확인 시간
+	completed_time TIMESTAMP							-- 완료 시간
+);
 
 -- ==================================================
 
@@ -378,11 +459,17 @@ CREATE TABLE health_story (
 
 
 
+DELETE FROM ev_inspection_log;
+DELETE FROM ev_issue_log;
+DELETE FROM ev_prediction_result;
+DELETE FROM ev_sensor_log;
 DELETE FROM ev_charging_log;
 DELETE FROM ev_charger;
 DELETE FROM receipt;
+--DELETE FROM vehicle_tracks;
 DELETE FROM parking_spot;
 DELETE FROM parking_log;
+--DELETE FROM vehicle;
 DELETE FROM reservation;
 DELETE FROM health_story;
 DELETE FROM faq;
@@ -410,13 +497,17 @@ SELECT * FROM med_staff;
 SELECT * FROM admin_dept;
 SELECT * FROM admin_staff;
 SELECT * FROM reservation;
-
+--SELECT * FROM vehicle;
 SELECT * FROM parking_log;
-
 SELECT * FROM parking_spot;
+--SELECT * FROM vehicle_tracks;
 SELECT * FROM receipt;
 SELECT * FROM ev_charger;
 SELECT * FROM ev_charging_log;
+SELECT * FROM ev_sensor_log;
+SELECT * FROM ev_prediction_result;
+SELECT * FROM ev_issue_log;
+SELECT * FROM ev_inspection_log;
 SELECT * FROM parking_prediction;
 SELECT * FROM holiday;
 SELECT * FROM voc;
