@@ -297,6 +297,7 @@
           AND m.del = 0
           AND s.status = '재직'
         LIMIT 1
+<<<<<<< HEAD
     </select>
 
     <select id="verifyAdminAndGetAdminInfo" parameterType="map" resultType="map">
@@ -317,5 +318,19 @@
         WHERE reservation_date = CURRENT_DATE
     </select>
     
+=======
+    </select>
+
+    <select id="verifyAdminAndGetAdminInfo" parameterType="map" resultType="map">
+        SELECT m.id AS loginId, m.name AS adminName
+        FROM mem m
+        JOIN admin_staff s ON m.mem_id = s.mem_id
+        JOIN admin_dept d ON s.admin_dept_id = d.admin_dept_id
+        WHERE d.admin_dept_name = #{dept}
+          AND s.emp_number = #{empId}   AND m.del = 0
+          AND s.status = '재직'
+        LIMIT 1
+    </select>
+>>>>>>> cf97aea ([백엔드] 260417 임소리)
 
 </mapper>

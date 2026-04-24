@@ -332,6 +332,7 @@ public class AdminService {
         
         return adminDao.verifyAdminAndGetAdminInfo(params);
     }
+<<<<<<< HEAD
     
     // 대시보드 통계 (오늘 예약 건수 조회)
     public int getTodayReservationCount() {
@@ -339,4 +340,6 @@ public class AdminService {
         
         return adminDao.getTodayReservationCount();
     }
+=======
+>>>>>>> cf97aea ([백엔드] 260417 임소리)
 }

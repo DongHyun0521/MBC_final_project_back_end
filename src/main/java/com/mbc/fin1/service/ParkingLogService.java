@@ -123,7 +123,7 @@ public class ParkingLogService {
 	}
 
 	// ==================================================================================================================
-
+	// 차량 출차
 	// 8004 정산 서버 주소 (출차+결제)
 	private final String PYTHON_BRAIN_URL = "http://localhost:8004/api/parking-payment/exit";
 
