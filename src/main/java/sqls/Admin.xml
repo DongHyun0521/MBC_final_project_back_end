@@ -319,6 +319,7 @@
     </select>
     
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     </select>
 
@@ -336,4 +337,27 @@
 =======
 >>>>>>> bbdf344 (260420 임소리)
 
+=======
+	<!--대시보드 시스템 설정 => 관리자 계정 리스트 조회용 -->
+	<select id="getDashboardAdmins" resultType="map">
+        SELECT s.emp_number AS empNumber,
+               m.name AS adminName,
+               d.admin_dept_name AS deptName,
+               s.rank AS rank,
+               s.status AS status
+        FROM admin_staff s
+        JOIN mem m ON s.mem_id = m.mem_id
+        JOIN admin_dept d ON s.admin_dept_id = d.admin_dept_id
+        WHERE d.admin_dept_id IN (5, 8, 9)
+          AND m.del = 0
+        ORDER BY d.admin_dept_id, s.rank
+    </select>
+    
+    <!--관리자 계정 권한 관리 접근 제어-->
+    <update id="updateAdminStatus" parameterType="map">
+        UPDATE admin_staff
+        SET status = #{status}
+        WHERE emp_number = #{empNumber}
+    </update>
+>>>>>>> 9fdb043 (260424 임소리)
 </mapper>

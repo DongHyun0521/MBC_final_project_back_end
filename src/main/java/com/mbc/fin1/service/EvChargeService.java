@@ -62,6 +62,7 @@ public class EvChargeService {
 
         String vehicleNum = (String) aiResult.get("vehicle_num");
         vehicleNum = (vehicleNum != null) ? vehicleNum.replace(" ", "") : "Unknown";
+        String country = (String) aiResult.get("license_plate_country");
 
         // OCR 실패 시 바로 리턴
         if ("Unknown".equals(vehicleNum)) {
@@ -83,13 +84,17 @@ public class EvChargeService {
         try {
             // 파이썬 8004번의 `/api/ev-charge/check-entry` 호출
             ResponseEntity<Map> checkRes = restTemplate.postForEntity(PYTHON_BRAIN_URL + "/check-entry", checkReq, Map.class);
-            return checkRes.getBody();
 
+            Map<String, Object> finalResult = new HashMap<>(checkRes.getBody());
+            finalResult.put("license_plate_country", country);
+            return finalResult;
+            
         } catch (HttpStatusCodeException e) {
             // 8004 서버에서 입차 기록이 없어서 에러를 뱉었을 경우
             Map<String, Object> failResult = new HashMap<>();
             failResult.put("is_success", false);
             failResult.put("vehicle_num", vehicleNum);
+            failResult.put("license_plate_country", country);
             failResult.put("message", "입차 기록을 찾을 수 없습니다.");
             return failResult;
         }
