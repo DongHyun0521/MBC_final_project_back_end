@@ -318,6 +318,7 @@
         WHERE reservation_date = CURRENT_DATE
     </select>
     
+<<<<<<< HEAD
 =======
     </select>
 
@@ -332,5 +333,7 @@
         LIMIT 1
     </select>
 >>>>>>> cf97aea ([백엔드] 260417 임소리)
+=======
+>>>>>>> bbdf344 (260420 임소리)
 
 </mapper>

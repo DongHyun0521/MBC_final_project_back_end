@@ -333,6 +333,9 @@ public class AdminService {
         return adminDao.verifyAdminAndGetAdminInfo(params);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bbdf344 (260420 임소리)
     
     // 대시보드 통계 (오늘 예약 건수 조회)
     public int getTodayReservationCount() {
@@ -340,6 +343,9 @@ public class AdminService {
         
         return adminDao.getTodayReservationCount();
     }
+<<<<<<< HEAD
 =======
 >>>>>>> cf97aea ([백엔드] 260417 임소리)
+=======
+>>>>>>> bbdf344 (260420 임소리)
 }

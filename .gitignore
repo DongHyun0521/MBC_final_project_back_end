@@ -37,15 +37,23 @@ build/
 .metadata/
 bin/.metadata/
 <<<<<<< HEAD
+<<<<<<< HEAD
 *.logmodel_data/train.csv
 
 *.log
 *.bkp
+=======
+*.log
+>>>>>>> bbdf344 (260420 임소리)
 
 images/plates/
 images/vehicle/
 license_plates/
+<<<<<<< HEAD
 license_plates_AIhub/
 =======
 *.log
 >>>>>>> ee6102f ([백엔드] 260417 임소리)
+=======
+license_plates_AIhub/
+>>>>>>> bbdf344 (260420 임소리)

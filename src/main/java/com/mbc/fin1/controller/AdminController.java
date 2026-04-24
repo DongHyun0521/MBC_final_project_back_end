@@ -506,6 +506,9 @@ public class AdminController {
     }
     
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bbdf344 (260420 임소리)
     // [최종 프로젝트 추가] 관리자 대시보드 통계 (오늘 예약 건수)
 
     @GetMapping("/reservation/today-count")
@@ -529,6 +532,9 @@ public class AdminController {
         }
     }
     
+<<<<<<< HEAD
 =======
 >>>>>>> cf97aea ([백엔드] 260417 임소리)
+=======
+>>>>>>> bbdf344 (260420 임소리)
 }
