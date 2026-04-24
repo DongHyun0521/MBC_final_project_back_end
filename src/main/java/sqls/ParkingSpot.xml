@@ -2,37 +2,42 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mbc.fin1.dao.ParkingSpotDao">
 
-	<!-- 입구로부터 가장 가까운 전기차 충전기 주차 자리 찾기 -->
+	<!-- 한국 전기차 전용: 전기차 충전기가 있는 자리 중 맨해튼 거리 최단 -->
 	<select id="findNearestAvailableEvSpot" resultType="com.mbc.fin1.dto.ParkingSpotDto">
-        SELECT 
-            s.parking_spot_id AS spotId, 
-            s.parking_log_id AS parkingLogId, 
-            s.parking_floor AS parkingFloor, 
-            s.parking_row AS parkingRow, 
-            s.parking_column AS parkingColumn, 
+        SELECT
+            s.parking_spot_id AS spotId,
+            s.parking_log_id AS parkingLogId,
+            s.parking_floor AS parkingFloor,
+            s.parking_row AS parkingRow,
+            s.parking_column AS parkingColumn,
             s.is_parked AS isParked
         FROM parking_spot s
         JOIN ev_charger e ON s.parking_spot_id = e.parking_spot_id
-        WHERE s.is_parked = false 
-          AND e.ev_charger_state = 'STANDBY'
-        ORDER BY s.parking_floor ASC, (s.parking_row + s.parking_column) ASC, s.parking_row ASC
+        WHERE s.is_parked = false
+        ORDER BY
+            s.parking_floor ASC,
+            (ABS(s.parking_row - 1) + ABS(s.parking_column - 1)) ASC,
+            s.parking_row ASC, s.parking_column ASC
         LIMIT 1
     </select>
 
-	<!-- 입구로부터 가장 가까운 주차 자리 찾기 -->
+	<!-- 일반 차량 전용: 전기차 충전기 없는 자리 중 맨해튼 거리 최단 -->
     <select id="findNearestAvailableSpot" resultType="com.mbc.fin1.dto.ParkingSpotDto">
-        SELECT 
-            s.parking_spot_id AS spotId, 
-            s.parking_log_id AS parkingLogId, 
-            s.parking_floor AS parkingFloor, 
-            s.parking_row AS parkingRow, 
-            s.parking_column AS parkingColumn, 
+        SELECT
+            s.parking_spot_id AS spotId,
+            s.parking_log_id AS parkingLogId,
+            s.parking_floor AS parkingFloor,
+            s.parking_row AS parkingRow,
+            s.parking_column AS parkingColumn,
             s.is_parked AS isParked
         FROM parking_spot s
         LEFT JOIN ev_charger e ON s.parking_spot_id = e.parking_spot_id
-        WHERE s.is_parked = false 
+        WHERE s.is_parked = false
           AND e.ev_charger_id IS NULL
-        ORDER BY s.parking_floor ASC, (s.parking_row + s.parking_column) ASC, s.parking_row ASC
+        ORDER BY
+            s.parking_floor ASC,
+            (ABS(s.parking_row - 1) + ABS(s.parking_column - 1)) ASC,
+            s.parking_row ASC, s.parking_column ASC
         LIMIT 1
     </select>
 
