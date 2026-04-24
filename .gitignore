@@ -36,6 +36,7 @@ build/
 
 .metadata/
 bin/.metadata/
+<<<<<<< HEAD
 *.logmodel_data/train.csv
 
 *.log
@@ -45,3 +46,6 @@ images/plates/
 images/vehicle/
 license_plates/
 license_plates_AIhub/
+=======
+*.log
+>>>>>>> ee6102f ([백엔드] 260417 임소리)
