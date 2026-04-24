@@ -39,7 +39,7 @@ public class HolidayService {
     	System.out.println("=> HolidayService: isHoliday | "+ new Date());
         DayOfWeek dayOfWeek = date.getDayOfWeek();
         // 토/일요일이면 무조건 휴일
-        if (/*dayOfWeek == DayOfWeek.SATURDAY ||*/ dayOfWeek == DayOfWeek.SUNDAY) {
+        if (dayOfWeek == DayOfWeek.SUNDAY) {
             return true;
         }
         // 평일인데 공휴일 리스트에 있으면 휴일

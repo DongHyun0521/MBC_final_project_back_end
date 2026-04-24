@@ -436,10 +436,6 @@ public class ParkingPredictionService {
 
         // 파이썬 server_parking_prediction.py 호출
         int predictedCars = callPythonPredictionServer(aiRequest);
-        if (predictedCars < 0) {
-            System.err.println("=> 파이썬 서버 응답 없음 → DB 저장 건너뜀: " + prettyTime);
-            return;   // upsertPrediction 호출 안 함
-        }
 
         ParkingPredictionDto prediction = ParkingPredictionDto.builder()
                 .targetDatetime(targetTime)
@@ -487,7 +483,7 @@ public class ParkingPredictionService {
         } catch (Exception e) {
             System.err.println("🚨 파이썬 주차 예측 서버 응답 없음! " + e.getMessage());
         }
-        return -1; 
+        return 0; 
     }
     
     // ========== 실시간 API ==========
