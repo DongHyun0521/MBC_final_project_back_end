@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    EV 충전기 MyBatis Mapper
+    EvChargerDao 인터페이스와 연결됨
+-->
+<mapper namespace="com.mbc.fin1.dao.EvChargerDao">
+
+    <!--
+        ev_charger 조회 결과를
+        실시간 현황 화면용 EvChargerDto에 매핑
+    -->
+    <resultMap id="evChargerResultMap" type="com.mbc.fin1.dto.EvChargerDto">
+        <!-- 충전기 ID (PK) -->
+        <id property="evChargerId" column="ev_charger_id"/>
+
+        <!-- 주차면 PK -->
+        <result property="parkingSpotId" column="parking_spot_id"/>
+
+        <!-- 충전기 타입 -->
+        <result property="chargerType" column="charger_type"/>
+
+        <!-- 충전기 원본 상태 -->
+        <result property="chargerStatus" column="charger_status"/>
+
+        <!-- 생성 시각 -->
+        <result property="createTime" column="create_time"/>
+
+        <!-- 층 탭 조회용 값 (예: 1F, 2F) -->
+        <result property="floor" column="floor"/>
+
+        <!-- 화면 표시용 층 라벨 (예: B1, B2) -->
+        <result property="floorLabel" column="floor_label"/>
+
+        <!-- 화면 표시용 상태 라벨 -->
+        <result property="statusLabel" column="status_label"/>
+    </resultMap>
+
+    <!--
+        전체 충전기 목록 조회
+        floor 파라미터가 있으면 해당 층만 조회
+        ev_charger_id 문자열에서 층 정보를 잘라 사용
+    -->
+    <select id="selectEvChargerList" resultMap="evChargerResultMap">
+        SELECT
+            ec.ev_charger_id,
+            ec.parking_spot_id,
+            ec.charger_type,
+            ec.charger_status,
+            ec.create_time,
+
+            split_part(ec.ev_charger_id, '-', 1) AS floor,
+
+            CASE split_part(ec.ev_charger_id, '-', 1)
+                WHEN '1F' THEN 'B1'
+                WHEN '2F' THEN 'B2'
+                WHEN '3F' THEN 'B3'
+                WHEN '4F' THEN 'B4'
+                WHEN '5F' THEN 'B5'
+                ELSE split_part(ec.ev_charger_id, '-', 1)
+            END AS floor_label,
+
+            CASE ec.charger_status
+                WHEN 'STANDBY' THEN '대기'
+                WHEN 'CHARGING' THEN '사용 중'
+                WHEN 'CHECK' THEN '점검'
+                WHEN 'RISK' THEN '위험'
+                WHEN 'FAULT' THEN '고장'
+                WHEN 'POWER_OFF' THEN '전원 차단'
+                ELSE ec.charger_status
+            END AS status_label
+        FROM ev_charger ec
+        <where>
+            <if test="floor != null and floor != ''">
+                split_part(ec.ev_charger_id, '-', 1) = #{floor}
+            </if>
+        </where>
+        ORDER BY
+            split_part(ec.ev_charger_id, '-', 1),
+            ec.ev_charger_id
+    </select>
+
+    <!--
+        충전기 ID 기준 단건 조회
+        상세보기 진입 시 기본 정보 조회용
+    -->
+    <select id="selectEvChargerById"
+            parameterType="string"
+            resultMap="evChargerResultMap">
+        SELECT
+            ec.ev_charger_id,
+            ec.parking_spot_id,
+            ec.charger_type,
+            ec.charger_status,
+            ec.create_time,
+
+            split_part(ec.ev_charger_id, '-', 1) AS floor,
+
+            CASE split_part(ec.ev_charger_id, '-', 1)
+                WHEN '1F' THEN 'B1'
+                WHEN '2F' THEN 'B2'
+                WHEN '3F' THEN 'B3'
+                WHEN '4F' THEN 'B4'
+                WHEN '5F' THEN 'B5'
+                ELSE split_part(ec.ev_charger_id, '-', 1)
+            END AS floor_label,
+
+            CASE ec.charger_status
+                WHEN 'STANDBY' THEN '대기'
+                WHEN 'CHARGING' THEN '사용 중'
+                WHEN 'CHECK' THEN '점검'
+                WHEN 'RISK' THEN '위험'
+                WHEN 'FAULT' THEN '고장'
+                WHEN 'POWER_OFF' THEN '전원 차단'
+                ELSE ec.charger_status
+            END AS status_label
+        FROM ev_charger ec
+        WHERE ec.ev_charger_id = #{evChargerId}
+    </select>
+
+	    <!--
+        실시간 현황 그래프/요약 조회
+        startDate ~ endDate 기간 기준 시간대별 충전량 / 가동률 집계
+    -->
+	<select id="selectChargingSummaryByHour" resultType="java.util.HashMap">
+	    WITH hours AS (
+	        SELECT generate_series(1, 24) AS hour_label
+	    ),
+	    hourly_kwh AS (
+	        SELECT
+	            EXTRACT(HOUR FROM start_time)::int + 1 AS hour_label,
+	            ROUND(COALESCE(SUM(total_charge_kwh), 0), 2) AS hourly_kwh
+	        FROM ev_charging_log
+	        WHERE DATE(start_time) BETWEEN #{startDate}::date AND #{endDate}::date
+	        GROUP BY EXTRACT(HOUR FROM start_time)
+	    )
+	    SELECT
+	        h.hour_label,
+	        COALESCE(k.hourly_kwh, 0) AS hourlyKwh
+	    FROM hours h
+	    LEFT JOIN hourly_kwh k
+	        ON h.hour_label = k.hour_label
+	    ORDER BY h.hour_label
+	</select>
+
+    <!--
+        실시간 이벤트 로그 조회
+        startDate ~ endDate 기간 기준 충전 로그 목록 조회
+    -->
+    <select id="selectChargingLogs" resultType="java.util.HashMap">
+        SELECT
+            ev_charging_log_id,
+            ev_charger_id,
+            vehicle_number,
+            start_time,
+            end_time,
+            current_charge_kwh,
+            total_charge_kwh,
+            charging_status,
+            end_reason,
+            CASE
+                WHEN end_time IS NOT NULL
+                THEN FLOOR(EXTRACT(EPOCH FROM (end_time - start_time)) / 60)
+                ELSE NULL
+            END AS chargingMinutes
+        FROM ev_charging_log
+        <where>
+            DATE(start_time) BETWEEN #{startDate}::date AND #{endDate}::date
+            <if test="status != null and status != '' and status != 'ALL'">
+                AND charging_status = #{status}
+            </if>
+        </where>
+        ORDER BY start_time DESC
+    </select>
+</mapper>

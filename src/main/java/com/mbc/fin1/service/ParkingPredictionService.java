@@ -35,7 +35,11 @@ public class ParkingPredictionService {
     
     @Value("${openapi.key}")
     private String API_KEY;
-    
+
+    // 파이썬 주차 수요 예측 서버 (8002) 주소
+    @Value("${fastapi.parking-prediction.base-url}")
+    private String parkingPredictionBaseUrl;
+
     private final RestTemplate restTemplate = new RestTemplate();
     
     private final Map<String, AtomicInteger> apiCallCounts = new ConcurrentHashMap<>() {{
@@ -473,7 +477,7 @@ public class ParkingPredictionService {
     private int callPythonPredictionServer(Map<String, Object> requestData) {
     	System.out.println("=> ParkingPredictionService: callPythonPredictionServer | " + new Date());
     	
-        String aiServerUrl = "http://localhost:8002/parking_prediction"; 
+        String aiServerUrl = parkingPredictionBaseUrl + "/parking_prediction";
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(aiServerUrl, requestData, Map.class);
             Map<String, Object> result = response.getBody();

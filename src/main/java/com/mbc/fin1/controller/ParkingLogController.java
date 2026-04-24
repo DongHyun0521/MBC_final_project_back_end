@@ -1,10 +1,12 @@
 // mbcFinalProject1 - com.mbc.fin1.controller - ParkingLogController.java
 package com.mbc.fin1.controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +31,25 @@ public class ParkingLogController {
             return ResponseEntity.internalServerError().body("입차 처리 중 오류 발생: " + e.getMessage());
         }
     }
+    
+    // ==================================================================================================================
+    // 차량 출차 시 OCR 텍스트 추출용 API
+    @PostMapping("/exit")
+    public ResponseEntity<?> vehicleExit(@RequestParam("file") MultipartFile file) {
+        try {
+            Map<String, Object> finalResult = parkingLogService.processExit(file);
+            return ResponseEntity.ok(finalResult);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Map<String, Object> errorResponse = new HashMap<>();
+            
+            errorResponse.put("message", "출차 번호판 인식 중 오류 발생");
+            errorResponse.put("detail", e.getMessage());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+    // ==================================================================================================================
 
     // 주차 로그 출력
     @GetMapping("/logs")

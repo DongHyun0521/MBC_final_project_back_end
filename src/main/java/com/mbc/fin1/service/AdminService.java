@@ -316,4 +316,27 @@ public class AdminService {
     	
         return adminDao.deleteHealthStory(healthStoryId);
     }
+    
+    // =============================================================================
+    // [최종 프로젝트 추가] 관리자 대시보드 전용 인증 (사원번호 찾기 & 로그인)
+    // 사원 번호 찾기
+    public String findAdminEmpId(Map<String, String> parmas) {
+    	System.out.print("=> AdminService: findAdminEmpId | " + new Date());
+    	
+    	return adminDao.findAdminEmpId(parmas);
+	}
+    
+    // 관리자 로그인
+    public Map<String, Object> verifyAdminAndGetAdminInfo(Map<String, String> params) {
+        System.out.println("=> AdminService: verifyAdminAndGetAdminInfo | " + new Date());
+        
+        return adminDao.verifyAdminAndGetAdminInfo(params);
+    }
+    
+    // 대시보드 통계 (오늘 예약 건수 조회)
+    public int getTodayReservationCount() {
+        System.out.println("=> AdminService: getTodayReservationCount | " + new Date());
+        
+        return adminDao.getTodayReservationCount();
+    }
 }

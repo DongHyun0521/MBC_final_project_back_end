@@ -36,11 +36,11 @@ build/
 
 .metadata/
 bin/.metadata/
+*.logmodel_data/train.csv
+
 *.log
 
 images/plates/
 images/vehicle/
 license_plates/
 license_plates_AIhub/
-**/.DS_Store
-**/.$*.bkp

@@ -213,34 +213,33 @@ CREATE TABLE ev_charger (
 );
 -- 13. 예지보전: 전기차 충전 기록
 CREATE TABLE ev_charging_log (
-	ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
-	ev_charger_id VARCHAR(20) NOT NULL
-        REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
-    parking_log_id INTEGER
-        REFERENCES parking_log(parking_log_id),	-- FK (parking_log)
-
-    vehicle_number VARCHAR(20),								-- 차량 번호
-    start_time TIMESTAMP NOT NULL,							-- 충전 시작 시간
-    end_time TIMESTAMP,										-- 충전 종료 시간
-    ev_charging_fee INTEGER DEFAULT 0,						-- 충전 요금
-    current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,	-- 현재 충전량
-    total_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,		-- 총 충전량
-
-    charging_status VARCHAR(20) NOT NULL DEFAULT 'READY'
-        CHECK (charging_status IN ('READY', 'CHARGING', 'COMPLETED', 'FORCE_STOPPED', 'FAULT_STOPPED')),	-- 충전 상태
-
-    end_reason VARCHAR(100)	-- 충전 종료 사유
-);
--- 14. 예지보전: 전기차 센서 로그
-CREATE TABLE ev_sensor_log (
-    ev_sensor_log_id SERIAL PRIMARY KEY,		-- PK
-    ev_charger_id VARCHAR(20) NOT NULL
-        REFERENCES ev_charger(ev_charger_id),	 -- FK (ev_charger)
-
-    measured_time TIMESTAMP NOT NULL DEFAULT now(),	-- 측정 시각
-    temperature NUMERIC(6, 2) NOT NULL,				-- 온도
-    voltage NUMERIC(8, 2) NOT NULL,					-- 전압
-    current NUMERIC(8, 2) NOT NULL					-- 전류
+    ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
+	ev_charger_id INTEGER NOT NULL 
+		REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
+	parking_log_id INTEGER 
+		REFERENCES parking_log(parking_log_id),	-- FK (parking_log)
+		
+	vehicle_num VARCHAR(20),	-- 차량 번호
+	
+    start_time TIMESTAMP NOT NULL,														-- 충전 시작 시간
+    end_time TIMESTAMP, 																-- 충전 종료 시간
+    charging_duration_minutes INTEGER 
+		CHECK (charging_duration_minutes IS NULL OR charging_duration_minutes >= 0),	-- 충전 시간(분)
+		
+    charged_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
+		CHECK (charged_kwh >= 0),										-- 총 충전량
+    current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
+		CHECK (current_charge_kwh >= 0),								-- 현재 충전량
+    remaining_minutes INTEGER 
+		CHECK (remaining_minutes IS NULL OR remaining_minutes >= 0),	-- 남은 시간
+	
+    charge_status VARCHAR(20) NOT NULL DEFAULT 'READY' 
+		CHECK (charge_status IN ('READY', 'CHARGING', 'COMPLETE', 'STOPPED', 'FAULT')),	-- 충전 상태
+	end_reason_code VARCHAR(20) NOT NULL DEFAULT 'NORMAL' 
+		CHECK (end_reason_code IN ('NORMAL', 'FORCE_STOP', 'FAULT_STOP')),				-- 종료 사유
+    create_time TIMESTAMP NOT NULL DEFAULT now(),										-- 생성 시간
+    
+	CHECK (end_time IS NULL OR end_time >= start_time) -- 시간 정합성 체크
 );
 -- 15. 예지보전: 전기차 충전기 예측 결과
 CREATE TABLE ev_prediction_result (
@@ -917,8 +916,9 @@ INSERT INTO reservation (
     reservation_type, visit_type, reservation_status
 )
 WITH date_range AS (
-    SELECT ('2026-04-18'::DATE + (n || ' days')::interval)::DATE AS res_date,
-           EXTRACT(ISODOW FROM ('2026-04-18'::DATE + (n || ' days')::interval)) AS dow
+    -- 1. 2026-03-30(월) ~ 2026-04-05(일) 일주일치 날짜 생성
+    SELECT ('2026-03-30'::DATE + (n || ' days')::interval)::DATE AS res_date,
+           EXTRACT(ISODOW FROM ('2026-03-30'::DATE + (n || ' days')::interval)) AS dow
     FROM generate_series(0, 6) AS n
 ),
 time_slots AS (
