@@ -1,6 +1,7 @@
 // mbcFinalProject1 - com.mbc.fin1.service - EvChargeService.java
 package com.mbc.fin1.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -20,8 +21,10 @@ import java.util.Map;
 @Service
 public class EvChargeService {
 
-    // 파이썬 서버 주소 상수화
-    private final String PYTHON_AI_URL = "http://localhost:8001/license-plates-recognition"; // 8001 OCR 엔진
+    // 파이썬 서버 주소 (8001 OCR 엔진은 application.properties에서 주입)
+    @Value("${fastapi.license-plate.base-url}")
+    private String pythonAiBaseUrl;
+
     private final String PYTHON_BRAIN_URL = "http://localhost:8004/api/ev-charge";           // 8004 정산/EV 서버
 
     // 전기차 번호판 OCR 스캔 및 입차 여부 체크
@@ -42,7 +45,7 @@ public class EvChargeService {
         });
         
         HttpEntity<MultiValueMap<String, Object>> ocrReq = new HttpEntity<>(ocrBody, multipartHeaders);
-        ResponseEntity<Map> ocrRes = restTemplate.postForEntity(PYTHON_AI_URL, ocrReq, Map.class);
+        ResponseEntity<Map> ocrRes = restTemplate.postForEntity(pythonAiBaseUrl + "/license-plates-recognition", ocrReq, Map.class);
         Map<String, Object> aiResult = ocrRes.getBody();
 
         String vehicleNum = (String) aiResult.get("vehicle_num");
