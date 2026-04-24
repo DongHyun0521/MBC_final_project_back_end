@@ -15,7 +15,7 @@ public class EvPredictionService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${fastapi.base-url}")
+    @Value("${fastapi.predictive-maintenance.base-url}")
     private String fastapiBaseUrl;
 
     public EvPredictionDto getPrediction(String chargerId) {
