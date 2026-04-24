@@ -39,6 +39,7 @@ bin/.metadata/
 *.logmodel_data/train.csv
 
 *.log
+*.bkp
 
 images/plates/
 images/vehicle/
