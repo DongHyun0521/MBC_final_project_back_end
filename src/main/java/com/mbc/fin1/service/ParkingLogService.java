@@ -38,9 +38,15 @@ public class ParkingLogService {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
-    // 파이썬 서버 연동
-    private final String PYTHON_URL = "http://localhost:8001/license-plates-recognition";
+    // 파이썬 서버 연동 (입차 및 OCR) - 8001 번호판 인식 서버는 application.properties에서 주입
+    @Value("${fastapi.license-plate.base-url}")
+    private String pythonAiBaseUrl;
 
+    // 8004 정산 서버 주소 (출차+결제)
+    @Value("${fastapi.payment.base-url}")
+    private String pythonPaymentBaseUrl;
+
+    // ==================================================================================================================
     // 차량 입차 시
     public ParkingLogDto processEntry(MultipartFile file) throws IOException {
         // 파일 바이트를 먼저 보관 (Python 전송 + 이미지 저장 양쪽에 사용)
@@ -57,7 +63,7 @@ public class ParkingLogService {
         });
 
         HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(PYTHON_URL, request, Map.class);
+        ResponseEntity<Map> response = restTemplate.postForEntity(pythonAiBaseUrl + "/license-plates-recognition", request, Map.class);
         Map<String, Object> aiResult = response.getBody();
 
         if (aiResult == null || !"success".equals(aiResult.get("status"))) {
@@ -74,42 +80,12 @@ public class ParkingLogService {
         String rawNum = (String) aiResult.get("vehicle_num");
         log.setVehicleNum(rawNum != null ? rawNum.replace(" ", "") : null);
 
-<<<<<<< HEAD
-		// OCR 실패 → 이미지 저장 안 함, DB 저장 안 함
-<<<<<<< HEAD
-<<<<<<< HEAD
-		if ("Unknown".equals(log.getVehicleNum()) || log.getVehicleNum() == null || log.getVehicleNum().isEmpty()) {
-			log.setVehicleNum("Unknown");
-			return log;
-		}
-
-=======
-=======
         // OCR 실패 → 이미지 저장 안 함, DB 저장 안 함
->>>>>>> 9fdb043 (260424 임소리)
         String vNum = log.getVehicleNum();
         if (vNum == null || vNum.isEmpty() || "Unknown".equals(vNum) || "인식불가".equals(vNum)) {
             log.setVehicleNum("인식불가");
             return log;
         }
-<<<<<<< HEAD
-        
->>>>>>> ee6102f ([백엔드] 260417 임소리)
-=======
-		String vNum = log.getVehicleNum();
-		if (vNum == null || vNum.isEmpty() || "Unknown".equals(vNum) || "인식불가".equals(vNum)) {
-			log.setVehicleNum("인식불가");
-			return log;
-		}
-
->>>>>>> bbdf344 (260420 임소리)
-		// 중복 입차 → 이미지 저장 안 함, DB 저장 안 함
-		ParkingLogDto existing = parkingLogDao.selectRecentEntryLog(log.getVehicleNum());
-		if (existing != null) {
-			existing.setParkingStatus("ALREADY_PARKED");
-			return existing;
-		}
-=======
 
         // 중복 입차 → 이미지 저장 안 함, DB 저장 안 함
         ParkingLogDto existing = parkingLogDao.selectRecentEntryLog(log.getVehicleNum());
@@ -117,7 +93,6 @@ public class ParkingLogService {
             existing.setParkingStatus("ALREADY_PARKED");
             return existing;
         }
->>>>>>> 9fdb043 (260424 임소리)
 
         // ── 여기까지 통과해야만 이미지 저장 ──
         java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "vehicle"));
@@ -144,8 +119,21 @@ public class ParkingLogService {
         // DB에 저장된 값으로 재조회
         ParkingLogDto saved = parkingLogDao.findById(log.getParkingLogId().intValue());
 
-        // 주차 자리 추천
-        ParkingSpotDto spot = parkingSpotDao.findNearestAvailableSpot();
+        // 주차 자리 추천 (한국 전기차면 충전기 있는 자리, 아니면 일반 자리)
+        ParkingSpotDto spot;
+        boolean isKoreanEv = "KOR".equals(log.getLicensePlateCountry())
+                          && Boolean.TRUE.equals(log.getIsEvLicensePlate());
+
+        if (isKoreanEv) {
+            spot = parkingSpotDao.findNearestAvailableEvSpot();
+            // 전기차 충전기 자리가 모두 찼을 경우 → 일반 자리로 폴백
+            if (spot == null) {
+                spot = parkingSpotDao.findNearestAvailableSpot();
+            }
+        } else {
+            spot = parkingSpotDao.findNearestAvailableSpot();
+        }
+
         if (spot != null) {
             char rowLetter = (char) ('A' + spot.getParkingRow() - 1);
             saved.setRecommendedSpot(
@@ -155,122 +143,120 @@ public class ParkingLogService {
         return saved;
     }
 
-	// ==================================================================================================================
-	// 차량 출차
-	// 8004 정산 서버 주소 (출차+결제)
-	private final String PYTHON_BRAIN_URL = "http://localhost:8004/api/parking-payment/exit";
+    // ==================================================================================================================
+    // 차량 출차
+    public Map<String, Object> processExit(MultipartFile file) throws IOException {
+        // 이미지 데이터 추출
+        byte[] fileBytes = file.getBytes();
 
-	public Map<String, Object> processExit(MultipartFile file) throws IOException {
-		// 이미지 데이터 추출
-		byte[] fileBytes = file.getBytes();
+        // 통신 객체 및 파일 전송용 헤더 설정
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getMessageConverters().add(0, new org.springframework.http.converter.StringHttpMessageConverter(
+                java.nio.charset.StandardCharsets.UTF_8));
 
-		// 통신 객체 및 파일 전송용 헤더 설정
-		RestTemplate restTemplate = new RestTemplate();
-		restTemplate.getMessageConverters().add(0, new org.springframework.http.converter.StringHttpMessageConverter(java.nio.charset.StandardCharsets.UTF_8));
-		
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-		// ocr용 멀티파트 바디 구성
-		MultiValueMap<String, Object> ocrBody = new LinkedMultiValueMap<>();
-		ocrBody.add("file", new ByteArrayResource(fileBytes) {
-			@Override
-			public String getFilename() {
-				return file.getOriginalFilename();
-			}
-		});
+        // ocr용 멀티파트 바디 구성
+        MultiValueMap<String, Object> ocrBody = new LinkedMultiValueMap<>();
+        ocrBody.add("file", new ByteArrayResource(fileBytes) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        });
 
-		// ocr 요청 엔티티 조립
-		HttpEntity<MultiValueMap<String, Object>> ocrReq = new HttpEntity<>(ocrBody, headers);
+        // ocr 요청 엔티티 조립
+        HttpEntity<MultiValueMap<String, Object>> ocrReq = new HttpEntity<>(ocrBody, headers);
 
-		// 8001 ocr 엔진 서버 호출 (이미지 텍스트화)
-		ResponseEntity<Map> ocrRes = restTemplate.postForEntity(PYTHON_URL, ocrReq, Map.class);
-		Map<String, Object> aiResult = ocrRes.getBody();
+        // 8001 ocr 엔진 서버 호출 (이미지 텍스트화)
+        ResponseEntity<Map> ocrRes = restTemplate.postForEntity(pythonAiBaseUrl + "/license-plates-recognition", ocrReq, Map.class);
+        Map<String, Object> aiResult = ocrRes.getBody();
 
-		// 인식 데이터 추출
-		String vehicleNum = (String) aiResult.get("vehicle_num");
-		// 나라 정보가 없으면 기본값 "KR"로 설정 (키오스크 언어 전환 안전장치)
-		String country = (aiResult.get("license_plate_country") != null)
-				? (String) aiResult.get("license_plate_country")
-				: "KOR";
+        // 인식 데이터 추출
+        String vehicleNum = (String) aiResult.get("vehicle_num");
+        // 나라 정보가 없으면 기본값 "KR"로 설정 (키오스크 언어 전환 안전장치)
+        String country = (aiResult.get("license_plate_country") != null)
+                ? (String) aiResult.get("license_plate_country")
+                : "KOR";
 
-		// 차량 번호 공백 제거 및 유효성 검증
-		vehicleNum = (vehicleNum != null) ? vehicleNum.replace(" ", "") : "Unknown";
+        // 차량 번호 공백 제거 및 유효성 검증
+        vehicleNum = (vehicleNum != null) ? vehicleNum.replace(" ", "") : "Unknown";
 
-		if ("Unknown".equals(vehicleNum))
-			throw new RuntimeException("번호판 인식 실패");
+        if ("Unknown".equals(vehicleNum))
+            throw new RuntimeException("번호판 인식 실패");
 
-		ParkingLogDto activeLog = parkingLogDao.selectRecentEntryLog(vehicleNum);
+        ParkingLogDto activeLog = parkingLogDao.selectRecentEntryLog(vehicleNum);
 
-		if (activeLog == null) {
-			// DB에 입차 기록이 아예 없는 경우 8004까지 갈 필요도 없이 여기서 X
-			Map<String, Object> failResult = new java.util.HashMap<>();
-			failResult.put("vehicle_num", vehicleNum);
-			failResult.put("license_plate_country", country);
-			failResult.put("is_success", false);
-			failResult.put("message", "입차 기록을 찾을 수 없습니다");
-			return failResult;
-		}
+        if (activeLog == null) {
+            // DB에 입차 기록이 아예 없는 경우 8004까지 갈 필요도 없이 여기서 X
+            Map<String, Object> failResult = new java.util.HashMap<>();
+            failResult.put("vehicle_num", vehicleNum);
+            failResult.put("license_plate_country", country);
+            failResult.put("is_success", false);
+            failResult.put("message", "입차 기록을 찾을 수 없습니다");
+            return failResult;
+        }
 
-		// 정산 서버용 JSON 헤더 설정
-		HttpHeaders jsonHeaders = new HttpHeaders();
-		jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
+        // 정산 서버용 JSON 헤더 설정
+        HttpHeaders jsonHeaders = new HttpHeaders();
+        jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
 
-		// 정산 요청 바디 구성 (번호 + 나라 정보)
-		Map<String, Object> paymentReqBody = new java.util.HashMap<>();
-		paymentReqBody.put("parking_log_id", activeLog.getParkingLogId());
-		paymentReqBody.put("vehicle_num", vehicleNum);
-		paymentReqBody.put("license_plate_country", country);
+        // 정산 요청 바디 구성 (번호 + 나라 정보)
+        Map<String, Object> paymentReqBody = new java.util.HashMap<>();
+        paymentReqBody.put("parking_log_id", activeLog.getParkingLogId());
+        paymentReqBody.put("vehicle_num", vehicleNum);
+        paymentReqBody.put("license_plate_country", country);
 
-		// 정산 요청 엔티티 조립
-		HttpEntity<Map<String, Object>> paymentReq = new HttpEntity<>(paymentReqBody, jsonHeaders);
+        // 정산 요청 엔티티 조립
+        HttpEntity<Map<String, Object>> paymentReq = new HttpEntity<>(paymentReqBody, jsonHeaders);
 
-		try {
-			// 8004 서버 호출
-			ResponseEntity<Map> paymentRes = restTemplate.postForEntity(PYTHON_BRAIN_URL, paymentReq, Map.class);
+        try {
+            // 8004 서버 호출
+            ResponseEntity<Map> paymentRes = restTemplate.postForEntity(pythonPaymentBaseUrl + "/api/parking-payment/exit", paymentReq, Map.class);
 
-			// 최종 데이터 취합 및 나라 정보 병합 후 반환
-			Map<String, Object> finalResult = new java.util.HashMap<>(paymentRes.getBody());
-			finalResult.put("license_plate_country", country);
-			finalResult.put("is_success", true);
-			return finalResult;
+            // 최종 데이터 취합 및 나라 정보 병합 후 반환
+            Map<String, Object> finalResult = new java.util.HashMap<>(paymentRes.getBody());
+            finalResult.put("license_plate_country", country);
+            finalResult.put("is_success", true);
+            return finalResult;
 
-		} catch (org.springframework.web.client.HttpStatusCodeException e) {
-			// 8004 서버가 404(기록 없음)일 때 실행
-			Map<String, Object> failResult = new java.util.HashMap<>();
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            // 8004 서버가 404(기록 없음)일 때 실행
+            Map<String, Object> failResult = new java.util.HashMap<>();
 
-			// 데이터 구조 보존
-			failResult.put("vehicle_num", vehicleNum);
-			failResult.put("license_plate_country", country);
-			failResult.put("is_success", false);
-			failResult.put("message", "입차 기록을 찾을 수 없습니다");
+            // 데이터 구조 보존
+            failResult.put("vehicle_num", vehicleNum);
+            failResult.put("license_plate_country", country);
+            failResult.put("is_success", false);
+            failResult.put("message", "입차 기록을 찾을 수 없습니다");
 
-			return failResult;
-		}
-	}
+            return failResult;
+        }
+    }
 
-	// ==================================================================================================================
+    // ==================================================================================================================
 
-	// 주차 로그 출력
-	public List<ParkingLogDto> selectAllParkingLogs() {
-		return parkingLogDao.selectParkingLogs();
-	}
+    // 주차 로그 출력
+    public List<ParkingLogDto> selectAllParkingLogs() {
+        return parkingLogDao.selectParkingLogs();
+    }
 
-	// 주차 로그 수정
-	public void updateLogByAdmin(Long parkingLogId, String newNum, String newCountry, Integer adminId) {
-		ParkingLogDto dto = new ParkingLogDto();
-		dto.setParkingLogId(parkingLogId);
-		dto.setVehicleNum(newNum);
-		dto.setLicensePlateCountry(newCountry);
-		dto.setAdminStaffId(adminId);
-		parkingLogDao.updateParkingLog(dto);
-	}
+    // 주차 로그 수정
+    public void updateLogByAdmin(Long parkingLogId, String newNum, String newCountry, Integer adminId) {
+        ParkingLogDto dto = new ParkingLogDto();
+        dto.setParkingLogId(parkingLogId);
+        dto.setVehicleNum(newNum);
+        dto.setLicensePlateCountry(newCountry);
+        dto.setAdminStaffId(adminId);
+        parkingLogDao.updateParkingLog(dto);
+    }
 
-	// 주차 로그 삭제
-	public void deleteParkingLog(Long parkingLogId, Integer adminId) {
-		ParkingLogDto dto = new ParkingLogDto();
-		dto.setParkingLogId(parkingLogId);
-		dto.setAdminStaffId(adminId);
-		parkingLogDao.deleteParkingLog(dto);
-	}
+    // 주차 로그 삭제
+    public void deleteParkingLog(Long parkingLogId, Integer adminId) {
+        ParkingLogDto dto = new ParkingLogDto();
+        dto.setParkingLogId(parkingLogId);
+        dto.setAdminStaffId(adminId);
+        parkingLogDao.deleteParkingLog(dto);
+    }
 }

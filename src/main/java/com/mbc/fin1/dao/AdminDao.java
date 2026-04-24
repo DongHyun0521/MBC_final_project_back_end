@@ -58,18 +58,7 @@ public interface AdminDao {
     // [최종 프로젝트 추가] 관리자 대시보드 전용 인증
     String findAdminEmpId(Map<String, String> params);								// 사원번호 찾기 (이름, 부서, 아이디, 이메일)
     Map<String, Object> verifyAdminAndGetAdminInfo(Map<String, String> params);		// 관리자 로그인 인증 (부서, 사원번호)
-<<<<<<< HEAD
-<<<<<<< HEAD
     int getTodayReservationCount(); // 오늘 예약 건수 조회
-<<<<<<< HEAD
-=======
-    
->>>>>>> cf97aea ([백엔드] 260417 임소리)
-=======
-    int getTodayReservationCount(); // 오늘 예약 건수 조회
->>>>>>> bbdf344 (260420 임소리)
-=======
     List<Map<String, Object>> getDashboardAdmins(); //대시보드 관리자 계정 목록 조회
     void updateAdminStatus(Map<String, String> params); // 대시보드 관리자 계정 권한 접근 제한
->>>>>>> 9fdb043 (260424 임소리)
 }

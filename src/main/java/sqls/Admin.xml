@@ -297,7 +297,6 @@
           AND m.del = 0
           AND s.status = '재직'
         LIMIT 1
-<<<<<<< HEAD
     </select>
 
     <select id="verifyAdminAndGetAdminInfo" parameterType="map" resultType="map">
@@ -317,27 +316,7 @@
         FROM reservation
         WHERE reservation_date = CURRENT_DATE
     </select>
-    
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    </select>
 
-    <select id="verifyAdminAndGetAdminInfo" parameterType="map" resultType="map">
-        SELECT m.id AS loginId, m.name AS adminName
-        FROM mem m
-        JOIN admin_staff s ON m.mem_id = s.mem_id
-        JOIN admin_dept d ON s.admin_dept_id = d.admin_dept_id
-        WHERE d.admin_dept_name = #{dept}
-          AND s.emp_number = #{empId}   AND m.del = 0
-          AND s.status = '재직'
-        LIMIT 1
-    </select>
->>>>>>> cf97aea ([백엔드] 260417 임소리)
-=======
->>>>>>> bbdf344 (260420 임소리)
-
-=======
 	<!--대시보드 시스템 설정 => 관리자 계정 리스트 조회용 -->
 	<select id="getDashboardAdmins" resultType="map">
         SELECT s.emp_number AS empNumber,
@@ -359,5 +338,4 @@
         SET status = #{status}
         WHERE emp_number = #{empNumber}
     </update>
->>>>>>> 9fdb043 (260424 임소리)
 </mapper>
