@@ -25,9 +25,9 @@ public class NfcReaderService {
         // ACR122 리더기만 찾기
         CardTerminal terminal = null;
         for (CardTerminal t : terminals) {
-        	if (t.getName().toUpperCase().contains("122")) {
+            if (t.getName().contains("ACR122")) {
                 terminal = t;
-                break; 
+                break; // 찾았으면 반복문 멈춤
             }
         }
 

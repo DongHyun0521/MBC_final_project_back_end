@@ -25,7 +25,9 @@ public class EvChargeService {
     @Value("${fastapi.license-plate.base-url}")
     private String pythonAiBaseUrl;
 
-    private final String PYTHON_BRAIN_URL = "http://localhost:8004/api/ev-charge";           // 8004 정산/EV 서버
+    // 8004 정산/EV 서버
+    @Value("${fastapi.payment.base-url}")
+    private String pythonPaymentBaseUrl;
 
     // 전기차 번호판 OCR 스캔 및 입차 여부 체크
     public Map<String, Object> processEvScan(MultipartFile file) throws IOException {
@@ -50,6 +52,7 @@ public class EvChargeService {
 
         String vehicleNum = (String) aiResult.get("vehicle_num");
         vehicleNum = (vehicleNum != null) ? vehicleNum.replace(" ", "") : "Unknown";
+        String country = (String) aiResult.get("license_plate_country");
 
         // OCR 실패 시 바로 리턴
         if ("Unknown".equals(vehicleNum)) {
@@ -69,15 +72,18 @@ public class EvChargeService {
         HttpEntity<Map<String, String>> checkReq = new HttpEntity<>(checkReqBody, jsonHeaders);
         
         try {
-            // 파이썬 8004번의 `/api/ev-charge/check-entry` 호출
-            ResponseEntity<Map> checkRes = restTemplate.postForEntity(PYTHON_BRAIN_URL + "/check-entry", checkReq, Map.class);
-            return checkRes.getBody();
+            ResponseEntity<Map> checkRes = restTemplate.postForEntity(pythonPaymentBaseUrl + "/api/ev-charge/check-entry", checkReq, Map.class);
+            
+            // 국가 정보 합쳐서 리턴
+            Map<String, Object> finalResult = new HashMap<>(checkRes.getBody());
+            finalResult.put("license_plate_country", country);
+            return finalResult;
 
         } catch (HttpStatusCodeException e) {
-            // 8004 서버에서 입차 기록이 없어서 에러를 뱉었을 경우
             Map<String, Object> failResult = new HashMap<>();
             failResult.put("is_success", false);
             failResult.put("vehicle_num", vehicleNum);
+            failResult.put("license_plate_country", country);
             failResult.put("message", "입차 기록을 찾을 수 없습니다.");
             return failResult;
         }
@@ -97,7 +103,7 @@ public class EvChargeService {
         
         try {
             // 파이썬 8004번의 `/api/ev-charge/search` 호출
-            ResponseEntity<Map> searchRes = restTemplate.postForEntity(PYTHON_BRAIN_URL + "/search", searchReq, Map.class);
+            ResponseEntity<Map> searchRes = restTemplate.postForEntity(pythonPaymentBaseUrl + "/api/ev-charge/search", searchReq, Map.class);
             return searchRes.getBody();
             
         } catch (HttpStatusCodeException e) {

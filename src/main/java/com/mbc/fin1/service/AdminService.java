@@ -339,4 +339,16 @@ public class AdminService {
         
         return adminDao.getTodayReservationCount();
     }
+
+	// 대시보드 관리자 계정 목록 조회
+	public List<Map<String, Object>> getDashboardAdmins() {
+		System.out.println("=> AdminService: getDashboardAdmins | " + new Date());
+		return adminDao.getDashboardAdmins();
+	}
+	
+	// 관리자 상태(권한) 변경
+    public void updateAdminStatus(Map<String, String> params) {
+        System.out.println("=> AdminService: updateAdminStatus | " + new Date());
+        adminDao.updateAdminStatus(params);
+    }
 }

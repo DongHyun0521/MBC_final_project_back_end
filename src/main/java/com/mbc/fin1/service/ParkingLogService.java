@@ -43,7 +43,8 @@ public class ParkingLogService {
     private String pythonAiBaseUrl;
 
     // 8004 정산 서버 주소 (출차+결제)
-    private final String PYTHON_BRAIN_URL = "http://localhost:8004/api/parking-payment/exit";
+    @Value("${fastapi.payment.base-url}")
+    private String pythonPaymentBaseUrl;
 
     // ==================================================================================================================
     // 차량 입차 시
@@ -212,7 +213,7 @@ public class ParkingLogService {
 
         try {
             // 8004 서버 호출
-            ResponseEntity<Map> paymentRes = restTemplate.postForEntity(PYTHON_BRAIN_URL, paymentReq, Map.class);
+            ResponseEntity<Map> paymentRes = restTemplate.postForEntity(pythonPaymentBaseUrl + "/api/parking-payment/exit", paymentReq, Map.class);
 
             // 최종 데이터 취합 및 나라 정보 병합 후 반환
             Map<String, Object> finalResult = new java.util.HashMap<>(paymentRes.getBody());
