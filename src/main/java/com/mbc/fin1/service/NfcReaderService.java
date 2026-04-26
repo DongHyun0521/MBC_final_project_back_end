@@ -5,12 +5,36 @@ import org.springframework.stereotype.Service;
 // javax.smartcardio.* : 자바(JDK)에 기본 내장된 스마트카드(NFC/IC) 통신용 핵심 라이브러리 전체를 가져옴
 import javax.smartcardio.*;
 import java.util.List;
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class NfcReaderService {
+	@PostConstruct
+    public void init() {
+        System.out.println("======================================");
+        System.out.println("   [NFC 서비스] 서버 기동 시 연결 확인 중...   ");
+        try {
+            TerminalFactory factory = TerminalFactory.getDefault();
+            List<CardTerminal> terminals = factory.terminals().list();
 
+            if (terminals.isEmpty()) {
+                System.out.println("   ⚠️ 경고: USB 리더기 인식 안 됨   ");
+            } else {
+                for (CardTerminal t : terminals) {
+                    if (t.getName().contains("122")) {
+                        System.out.println("   ✅ 확인: ACR122U 단말기 연결 완료   ");
+                        System.out.println("   연결된 이름: " + t.getName());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("   ❌ 에러: NFC 초기화 중 오류 발생: " + e.getMessage());
+        }
+        System.out.println("======================================");
+    }
+	
     public String waitForCardAndReadUid() throws Exception {
-        
+    	
         // PC 환경에 구성된 스마트카드 단말기 관리자(Factory) 객체를 불러옴
         TerminalFactory factory = TerminalFactory.getDefault();
         
@@ -25,7 +49,7 @@ public class NfcReaderService {
         // ACR122 리더기만 찾기
         CardTerminal terminal = null;
         for (CardTerminal t : terminals) {
-            if (t.getName().contains("ACR122")) {
+            if (t.getName().contains("122")) {
                 terminal = t;
                 break; // 찾았으면 반복문 멈춤
             }
@@ -35,7 +59,7 @@ public class NfcReaderService {
         if (terminal == null) {
             throw new Exception("ACR122U 단말기를 찾을 수 없습니다");
         }
-        System.out.println("대기 중인 단말기: " + terminal.getName());
+        // System.out.println("대기 중인 단말기: " + terminal.getName());
 
         // 리더기 위에 카드가 물리적으로 닿을 때까지 프로그램의 흐름을 멈추고 무한 대기
         terminal.waitForCardPresent(0);
@@ -68,6 +92,7 @@ public class NfcReaderService {
                 uidHex.append(String.format("%02X", b));
             }
             
+            System.out.println("읽어온 카드 UID: " + uidHex.toString());
             // 완성된 16진수 UID 문자열을 반환
             return uidHex.toString();
         } else {
