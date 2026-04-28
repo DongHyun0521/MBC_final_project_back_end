@@ -1,4 +1,6 @@
 
+
+
 DROP TABLE IF EXISTS ev_inspection_log;
 DROP TABLE IF EXISTS ev_issue_log;
 DROP TABLE IF EXISTS ev_prediction_result;
@@ -213,42 +215,34 @@ CREATE TABLE ev_charger (
 );
 -- 13. 예지보전: 전기차 충전 기록
 CREATE TABLE ev_charging_log (
-    ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
-	ev_charger_id VARCHAR(20) NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
-	parking_log_id INTEGER 
-		REFERENCES parking_log(parking_log_id),	-- FK (parking_log)
-		
-	vehicle_num VARCHAR(20),	-- 차량 번호
-	
-    start_time TIMESTAMP NOT NULL,														-- 충전 시작 시간
-    end_time TIMESTAMP, 																-- 충전 종료 시간
-    charging_duration_minutes INTEGER 
-		CHECK (charging_duration_minutes IS NULL OR charging_duration_minutes >= 0),	-- 충전 시간(분)
-		
-    charged_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
-		CHECK (charged_kwh >= 0),										-- 총 충전량
-    current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0 
-		CHECK (current_charge_kwh >= 0),								-- 현재 충전량
-    remaining_minutes INTEGER 
-		CHECK (remaining_minutes IS NULL OR remaining_minutes >= 0),	-- 남은 시간
-	
-    charge_status VARCHAR(20) NOT NULL DEFAULT 'READY' 
-		CHECK (charge_status IN ('READY', 'CHARGING', 'COMPLETE', 'STOPPED', 'FAULT')),	-- 충전 상태
-	end_reason_code VARCHAR(20) NOT NULL DEFAULT 'NORMAL' 
-		CHECK (end_reason_code IN ('NORMAL', 'FORCE_STOP', 'FAULT_STOP')),				-- 종료 사유
-    create_time TIMESTAMP NOT NULL DEFAULT now(),										-- 생성 시간
-    
-	CHECK (end_time IS NULL OR end_time >= start_time) -- 시간 정합성 체크
+	ev_charging_log_id SERIAL PRIMARY KEY,		-- PK
+	ev_charger_id VARCHAR(20) NOT NULL
+        REFERENCES ev_charger(ev_charger_id),	-- FK (ev_charger)
+    parking_log_id INTEGER
+        REFERENCES parking_log(parking_log_id),	-- FK (parking_log)
+
+    vehicle_number VARCHAR(20),								-- 차량 번호
+    start_time TIMESTAMP NOT NULL,							-- 충전 시작 시간
+    end_time TIMESTAMP,										-- 충전 종료 시간
+    ev_charging_fee INTEGER DEFAULT 0,						-- 충전 요금
+    current_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,	-- 현재 충전량
+    total_charge_kwh NUMERIC(10, 2) NOT NULL DEFAULT 0,		-- 총 충전량
+
+    charging_status VARCHAR(20) NOT NULL DEFAULT 'READY'
+        CHECK (charging_status IN ('READY', 'CHARGING', 'COMPLETED', 'FORCE_STOPPED', 'FAULT_STOPPED')),	-- 충전 상태
+
+    end_reason VARCHAR(100)	-- 충전 종료 사유
 );
 -- 14. 에지보전: 전기차 충전기 센서 기록
 CREATE TABLE ev_sensor_log (
-	ev_charger_id VARCHAR(20) NOT NULL 
-		REFERENCES ev_charger(ev_charger_id),
-	measured_time TIMESTAMP NOT NULL DEFAULT now(),
-	temperature NUMERIC(6, 2) NOT NULL,
-	voltage NUMERIC(8, 2) NOT NULL,
-	current NUMERIC(8, 2) NOT NULL
+    ev_sensor_log_id SERIAL PRIMARY KEY,		-- PK
+    ev_charger_id VARCHAR(20) NOT NULL
+        REFERENCES ev_charger(ev_charger_id),	 -- FK (ev_charger)
+
+    measured_time TIMESTAMP NOT NULL DEFAULT now(),	-- 측정 시각
+    temperature NUMERIC(6, 2) NOT NULL,				-- 온도
+    voltage NUMERIC(8, 2) NOT NULL,					-- 전압
+    current NUMERIC(8, 2) NOT NULL					-- 전류
 );
 -- 15. 예지보전: 전기차 충전기 예측 결과
 CREATE TABLE ev_prediction_result (
@@ -645,7 +639,7 @@ FROM inserted_admin;
 -- 행정: 시설 1
 WITH inserted_admin AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
-    VALUES ('admin_fac1', 'Pass123!', '정시설', 19850312, 1, '서울시 서초구 AA아파트', '101호', '01011112222', 'fac1@shospital.com')
+    VALUES ('adminfac1', 'Pass123!', '정시설', 19850312, 1, '서울시 서초구 AA아파트', '101호', '01011112222', 'fac1@shospital.com')
     RETURNING mem_id
 )
 INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
@@ -653,7 +647,7 @@ SELECT mem_id, '과장', 'F03917495', '재직', 5 FROM inserted_admin;
 -- 행정: 시설 2
 WITH inserted_admin AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
-    VALUES ('admin_fac2', 'Pass123!', '최시설', 19901120, 1, '서울시 강남구 BB빌라', '302호', '01033334444', 'fac2@shospital.com')
+    VALUES ('adminfac2', 'Pass123!', '최시설', 19901120, 1, '서울시 강남구 BB빌라', '302호', '01033334444', 'fac2@shospital.com')
     RETURNING mem_id
 )
 INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
@@ -664,7 +658,7 @@ SELECT mem_id, '대리', 'F64105229', '재직', 5 FROM inserted_admin;
 -- 행정: 보안 1
 WITH inserted_admin AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
-    VALUES ('admin_sec1', 'Pass123!', '박보안', 19880505, 1, '서울시 송파구 CC아파트', '505호', '01055556666', 'sec1@shospital.com')
+    VALUES ('adminsec1', 'Pass123!', '박보안', 19880505, 1, '서울시 송파구 CC아파트', '505호', '01055556666', 'sec1@shospital.com')
     RETURNING mem_id
 )
 INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
@@ -672,7 +666,7 @@ SELECT mem_id, '팀장', 'S98510246', '재직', 8 FROM inserted_admin;
 -- 행정: 보안 2
 WITH inserted_admin AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
-    VALUES ('admin_sec2', 'Pass123!', '이보안', 19950815, 2, '서울시 강동구 DD빌라', '201호', '01077778888', 'sec2@shospital.com')
+    VALUES ('adminsec2', 'Pass123!', '이보안', 19950815, 2, '서울시 강동구 DD빌라', '201호', '01077778888', 'sec2@shospital.com')
     RETURNING mem_id
 )
 INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
@@ -683,7 +677,7 @@ SELECT mem_id, '사원', 'S78100265', '재직', 8 FROM inserted_admin;
 -- 행정: 주차 1
 WITH inserted_admin AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
-    VALUES ('admin_park1', 'Pass123!', '성주차', 19910214, 1, '서울시 성동구 EE아파트', '1203호', '01099990000', 'park1@shospital.com')
+    VALUES ('adminpark1', 'Pass123!', '성주차', 19910214, 1, '서울시 성동구 EE아파트', '1203호', '01099990000', 'park1@shospital.com')
     RETURNING mem_id
 )
 INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
@@ -692,7 +686,7 @@ SELECT mem_id, '주임', 'P98102547', '재직', 9 FROM inserted_admin;
 -- 행정:주차 2
 WITH inserted_admin AS (
     INSERT INTO mem (id, password, name, birthday, gender, address, address_detail, phone_number, email)
-    VALUES ('admin_park2', 'Pass123!', '한주차', 19930630, 2, '서울시 마포구 FF빌라', '405호', '01012345678', 'park2@shospital.com')
+    VALUES ('adminpark2', 'Pass123!', '한주차', 19930630, 2, '서울시 마포구 FF빌라', '405호', '01012345678', 'park2@shospital.com')
     RETURNING mem_id
 )
 INSERT INTO admin_staff (mem_id, rank, emp_number, status, admin_dept_id)
@@ -926,9 +920,9 @@ INSERT INTO reservation (
     reservation_type, visit_type, reservation_status
 )
 WITH date_range AS (
-    -- 1. 2026-03-30(월) ~ 2026-04-05(일) 일주일치 날짜 생성
-    SELECT ('2026-03-30'::DATE + (n || ' days')::interval)::DATE AS res_date,
-           EXTRACT(ISODOW FROM ('2026-03-30'::DATE + (n || ' days')::interval)) AS dow
+    -- 1. 시작일 기준 일주일치 날짜 생성
+    SELECT ('2026-04-28'::DATE + (n || ' days')::interval)::DATE AS res_date,
+           EXTRACT(ISODOW FROM ('2026-04-28'::DATE + (n || ' days')::interval)) AS dow
     FROM generate_series(0, 6) AS n
 ),
 time_slots AS (
