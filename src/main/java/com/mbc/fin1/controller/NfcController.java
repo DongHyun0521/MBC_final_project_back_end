@@ -37,7 +37,7 @@ public class NfcController {
             error.put("is_success", false);
             error.put("message", e.getMessage());
 
-            return ResponseEntity.status(500).body(error);
+            return ResponseEntity.ok(error);
         }
     }
 }

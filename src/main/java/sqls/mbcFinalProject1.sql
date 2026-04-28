@@ -241,7 +241,7 @@ CREATE TABLE ev_charging_log (
     
 	CHECK (end_time IS NULL OR end_time >= start_time) -- 시간 정합성 체크
 );
--- 14. 에지보전: 전기차 충전기 센서 로그
+-- 14. 에지보전: 전기차 충전기 센서 기록
 CREATE TABLE ev_sensor_log (
 	ev_charger_id VARCHAR(20) NOT NULL 
 		REFERENCES ev_charger(ev_charger_id),
@@ -272,7 +272,7 @@ CREATE TABLE ev_prediction_result (
     voltage_value NUMERIC(8, 2),		-- 예측 시점 전압
     current_value NUMERIC(8, 2)			-- 예측 시점 전류
 );
--- 16. 예지보전: 전기차 충전기 이슈 로그
+-- 16. 예지보전: 전기차 충전기 문제 기록
 CREATE TABLE ev_issue_log (
     ev_issue_log_id SERIAL PRIMARY KEY,								-- PK
     ev_charger_id VARCHAR(20) NOT NULL
@@ -491,7 +491,9 @@ SELECT * FROM med_staff;
 SELECT * FROM admin_dept;
 SELECT * FROM admin_staff;
 SELECT * FROM reservation;
+
 SELECT * FROM parking_log;
+
 SELECT * FROM parking_spot;
 SELECT * FROM receipt;
 SELECT * FROM ev_charger;
