@@ -233,7 +233,7 @@ CREATE TABLE ev_charging_log (
 
     end_reason VARCHAR(100)	-- 충전 종료 사유
 );
--- 14. 에지보전: 전기차 충전기 센서 기록
+-- 14. 예지보전: 전기차 센서 로그
 CREATE TABLE ev_sensor_log (
     ev_sensor_log_id SERIAL PRIMARY KEY,		-- PK
     ev_charger_id VARCHAR(20) NOT NULL
@@ -266,7 +266,7 @@ CREATE TABLE ev_prediction_result (
     voltage_value NUMERIC(8, 2),		-- 예측 시점 전압
     current_value NUMERIC(8, 2)			-- 예측 시점 전류
 );
--- 16. 예지보전: 전기차 충전기 문제 기록
+-- 16. 예지보전: 전기차 충전기 이슈 로그
 CREATE TABLE ev_issue_log (
     ev_issue_log_id SERIAL PRIMARY KEY,								-- PK
     ev_charger_id VARCHAR(20) NOT NULL
@@ -290,6 +290,7 @@ CREATE TABLE ev_issue_log (
     power_off_done BOOLEAN NOT NULL DEFAULT FALSE		-- 강제 종료 여부
 );
 -- 17. 예지보전: 전기차 충전기 점검 요청
+-- =========================================================
 CREATE TABLE ev_inspection_log (
     ev_inspection_log_id SERIAL PRIMARY KEY,		-- PK
     ev_issue_log_id INTEGER NOT NULL
@@ -545,19 +546,19 @@ SELECT f, r, c
 FROM generate_series(1, 5) AS f,	-- 1~5층
 	generate_series(1, 4) AS r,		-- 1~4행
 	generate_series(1, 10) AS c;	-- 1~10열
--- 전기차 충전기
+-- 전기차 충전기 생성 (규격: 1F-D-08, 1F-D-09, 1F-D-10)
 INSERT INTO ev_charger (ev_charger_id, parking_spot_id, charger_type, charger_status)
 SELECT
-	'B' || s.parking_floor || '-D-' || s.parking_column AS ev_charger_id,
-	s.parking_spot_id,
-	CASE
-		WHEN s.parking_column = 10 THEN 'FAST'	-- 10열은 급속 (층당 1개)
-		ELSE 'SLOW'								-- 8, 9열은 완속 (층당 2개)
-	END AS charger_type,
-	'STANDBY' AS charger_status
+    s.parking_floor || 'F-D-' || LPAD(s.parking_column::text, 2, '0') AS ev_charger_id,
+    s.parking_spot_id,
+    CASE 
+        WHEN s.parking_column = 10 THEN 'FAST' 
+        ELSE 'SLOW' 
+    END AS charger_type,
+    'STANDBY' AS charger_status
 FROM parking_spot s
-WHERE s.parking_row = 4					-- D행 (1→A, 2→B, 3→C, 4→D)
-  AND s.parking_column IN (8, 9, 10)	-- 8, 9, 10열만
+WHERE s.parking_row = 4                   -- D행 고정
+  AND s.parking_column IN (8, 9, 10)      -- 08, 09, 10번만
 ORDER BY s.parking_floor, s.parking_column;
 
 
