@@ -185,6 +185,28 @@ public class ParkingLogService {
 
         if ("Unknown".equals(vehicleNum))
             throw new RuntimeException("번호판 인식 실패");
+        
+     // 입차와 완벽하게 동일한 이미지 저장 및 경로 생성 로직
+        java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "vehicle"));
+        java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "plates"));
+
+        String vFilename = "exit_car_" + UUID.randomUUID().toString().replace("-", "") + ".jpg";
+        String pFilename = "exit_plate_" + UUID.randomUUID().toString().replace("-", "") + ".jpg";
+
+        // 원본 이미지 저장
+        java.nio.file.Files.write(java.nio.file.Paths.get(uploadDir, "vehicle", vFilename), fileBytes);
+
+        // 크롭(YOLO) 이미지 변환 및 저장
+        String plateBase64 = (String) aiResult.get("plate_img_base64");
+        if (plateBase64 != null) {
+            byte[] plateBytes = java.util.Base64.getDecoder().decode(plateBase64);
+            java.nio.file.Files.write(java.nio.file.Paths.get(uploadDir, "plates", pFilename), plateBytes);
+        }
+
+        // 프론트엔드로 넘겨줄 이미지 URL 세팅
+        String savedVehicleImg = "/images/vehicle/" + vFilename;
+        String savedPlateImg = "/images/plates/" + pFilename;
+        // ---------------------------------------------------------
 
         ParkingLogDto activeLog = parkingLogDao.selectRecentEntryLog(vehicleNum);
 
@@ -195,6 +217,9 @@ public class ParkingLogService {
             failResult.put("license_plate_country", country);
             failResult.put("is_success", false);
             failResult.put("message", "입차 기록을 찾을 수 없습니다");
+            
+            failResult.put("vehicle_img", savedVehicleImg);
+            failResult.put("license_plate_img", savedPlateImg);
             return failResult;
         }
 
@@ -219,6 +244,9 @@ public class ParkingLogService {
             Map<String, Object> finalResult = new java.util.HashMap<>(paymentRes.getBody());
             finalResult.put("license_plate_country", country);
             finalResult.put("is_success", true);
+            
+            finalResult.put("vehicle_img", savedVehicleImg);
+            finalResult.put("license_plate_img", savedPlateImg);
             return finalResult;
 
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
@@ -230,6 +258,9 @@ public class ParkingLogService {
             failResult.put("license_plate_country", country);
             failResult.put("is_success", false);
             failResult.put("message", "입차 기록을 찾을 수 없습니다");
+            
+            failResult.put("vehicle_img", savedVehicleImg);
+            failResult.put("license_plate_img", savedPlateImg);
 
             return failResult;
         }

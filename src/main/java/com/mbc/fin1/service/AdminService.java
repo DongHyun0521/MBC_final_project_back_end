@@ -333,6 +333,18 @@ public class AdminService {
         return adminDao.verifyAdminAndGetAdminInfo(params);
     }
     
+    // 직위 가져오기
+    public String getAdminRank(Long memId) {
+        System.out.println("=> AdminService: getAdminRank | " + new Date());
+        return adminDao.getAdminRank(memId);
+    }
+
+    // 사원번호 가져오기
+    public String getAdminEmpNumber(Long memId) {
+        System.out.println("=> AdminService: getAdminEmpNumber | " + new Date());
+        return adminDao.getAdminEmpNumber(memId);
+    }
+    
     // 대시보드 통계 (오늘 예약 건수 조회)
     public int getTodayReservationCount() {
         System.out.println("=> AdminService: getTodayReservationCount | " + new Date());

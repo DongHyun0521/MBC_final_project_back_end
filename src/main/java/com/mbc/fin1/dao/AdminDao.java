@@ -61,4 +61,6 @@ public interface AdminDao {
     int getTodayReservationCount(); // 오늘 예약 건수 조회
     List<Map<String, Object>> getDashboardAdmins(); //대시보드 관리자 계정 목록 조회
     void updateAdminStatus(Map<String, String> params); // 대시보드 관리자 계정 권한 접근 제한
+    public String getAdminRank(Long memId); // 대시보드 관리자 직위 조회
+    public String getAdminEmpNumber(Long memId); // 대시보드 관리자 사원번호 조회
 }
