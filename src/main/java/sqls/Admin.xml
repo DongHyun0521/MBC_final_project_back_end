@@ -300,16 +300,35 @@
     </select>
 
     <select id="verifyAdminAndGetAdminInfo" parameterType="map" resultType="map">
-        SELECT m.id AS loginId, m.name AS adminName
-        FROM mem m
-        JOIN admin_staff s ON m.mem_id = s.mem_id
-        JOIN admin_dept d ON s.admin_dept_id = d.admin_dept_id
-        WHERE d.admin_dept_name = #{dept}
-          AND s.emp_number = #{empId}   AND m.del = 0
-          AND s.status = '재직'
-        LIMIT 1
-    </select>
-    
+	    SELECT m.id AS loginId, 
+	           m.name AS adminName,
+	           s.rank AS rank,             
+	           s.emp_number AS empNumber,   
+	           d.admin_dept_name AS deptName 
+	    FROM mem m
+	    JOIN admin_staff s ON m.mem_id = s.mem_id
+	    JOIN admin_dept d ON s.admin_dept_id = d.admin_dept_id
+	    WHERE d.admin_dept_name = #{dept}
+	      AND s.emp_number = #{empId}   
+	      AND m.del = 0
+	      AND s.status = '재직'
+	    LIMIT 1
+	</select>
+
+	<!-- 회원ID로 직위(rank) 가져오기 -->
+	<select id="getAdminRank" parameterType="long" resultType="String">
+	    SELECT rank
+	    FROM admin_staff
+	    WHERE mem_id = #{memId}
+	</select>
+
+	<!-- 회원ID로 사원번호(emp_number) 가져오기 -->
+	<select id="getAdminEmpNumber" parameterType="long" resultType="String">
+	    SELECT emp_number
+	    FROM admin_staff
+	    WHERE mem_id = #{memId}
+	</select>
+
     <!--대시보드 통계 예약 건수 조회-->
     <select id="getTodayReservationCount" resultType="int">
         SELECT COUNT(*)

@@ -72,9 +72,22 @@ public class AdminController {
 		boolean isDashboardAllowed = (deptName != null
 				&& (deptName.contains("주차") || deptName.contains("시설") || deptName.contains("보안")));
 
+		Map<String, Object> response = new HashMap<>();
+
 		// 프론트엔드로 보낼 정보
-		return Map.of("isAdmin", true, "deptName", deptName != null ? deptName : "", "isWonmu", isWonmu, "isPr", isPr,
-				"isDashboardAllowed", isDashboardAllowed);
+		response.put("isAdmin", true);
+		response.put("deptName", deptName);
+		response.put("isWonmu", isWonmu);
+		response.put("isPr", isPr);
+		response.put("isDashboardAllowed", isDashboardAllowed);
+
+		// [최동 프로젝트 추가] 대시보드용 관리자 정보
+		response.put("name", member.getName());
+		response.put("rank", adminService.getAdminRank(member.getMemId()));
+		response.put("emp_number", adminService.getAdminEmpNumber(member.getMemId()));
+
+		return response;
+
 	}
 
 	// ========== 공지사항 ==========
@@ -502,10 +515,16 @@ public class AdminController {
 			if (adminData != null) {
 				System.out.println("=> DB에서 넘어온 데이터 확인: " + adminData);
 
-				session.setAttribute("loginId", adminData.get("loginId"));
+				session.setAttribute("loginId", adminData.get("loginid"));
+				session.setAttribute("empNumber", adminData.get("empnumber"));
+				session.setAttribute("rank", adminData.get("rank"));
 
 				result.put("is_success", true);
 				result.put("admin_name", adminData.get("adminname"));
+				result.put("admin_id", adminData.get("loginid"));
+				result.put("emp_number", adminData.get("empnumber"));
+				result.put("rank", adminData.get("rank"));
+				result.put("dept_name", adminData.get("deptname"));
 
 				return result;
 			}
@@ -552,18 +571,36 @@ public class AdminController {
 		System.out.println("=> AdminController: getDashboardAdmins | " + new Date());
 		return adminService.getDashboardAdmins();
 	}
-	
+
 	// [최종 프로젝트 추가] 관리자 계정 상태 변경 (권한 해제/부여)
-    @PutMapping("/update-status")
-    public String updateAdminStatus(@RequestBody Map<String, String> params) {
-        System.out.println("=> AdminController: updateAdminStatus | " + new Date());
-        try {
-            adminService.updateAdminStatus(params);
-            return "success";
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "fail";
-        }
-    }
+	@PutMapping("/update-status")
+	public String updateAdminStatus(@RequestBody Map<String, String> params, HttpSession session) {
+		System.out.println("=> AdminController: updateAdminStatus | " + new Date());
+
+		// 1. 로그인된 유저인지 확인
+		String loginId = (String) session.getAttribute("loginId");
+		if (loginId == null) {
+			return "fail: unauthorized";
+		}
+
+		// 2. 권한 체크 (주차관리팀 + 팀장인지 검증하는 로직 필요)
+		MemDto currentMember = memService.getMemberInfo(loginId);
+
+		String myDept = adminService.getAdminDeptName(currentMember.getMemId());
+		String myRank = adminService.getAdminRank(currentMember.getMemId());
+
+		// 주차관리팀이 아니거나 팀장이 아니면 거절 (NullPointerException 방지 로직 포함)
+		if (myDept == null || !myDept.contains("주차") || myRank == null || !myRank.equals("팀장")) {
+			return "fail: forbidden (Only Parking Team Leader can access)";
+		}
+
+		try {
+			adminService.updateAdminStatus(params);
+			return "success";
+		} catch (Exception e) {
+			e.printStackTrace();
+			return "fail";
+		}
+	}
 
 }

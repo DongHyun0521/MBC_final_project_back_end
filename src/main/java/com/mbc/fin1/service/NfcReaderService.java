@@ -62,7 +62,12 @@ public class NfcReaderService {
         // System.out.println("대기 중인 단말기: " + terminal.getName());
 
         // 리더기 위에 카드가 물리적으로 닿을 때까지 프로그램의 흐름을 멈추고 무한 대기
-        terminal.waitForCardPresent(0);
+        //terminal.waitForCardPresent(0);
+        boolean isCardTouched = terminal.waitForCardPresent(10000); 
+
+        if (!isCardTouched) {
+            throw new Exception("결제 시간이 초과되었습니다");
+        }
 
         // 매개변수 "*" -> T=0, T=1 등 카드의 통신 프로토콜을 시스템이 알아서 자동으로 맞추도록 하는 것
         Card card = terminal.connect("*");
