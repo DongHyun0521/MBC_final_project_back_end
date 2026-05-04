@@ -2,7 +2,16 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mbc.fin1.dao.ParkingSpotDao">
 
-	<!-- 한국 전기차 전용: 전기차 충전기가 있는 자리 중 맨해튼 거리 최단 -->
+	<!--
+	  한국 전기차 전용: 전기차 충전기가 있는 자리 중 맨해튼 거리 최단
+	  조건:
+	    1) parking_spot ↔ ev_charger 연결된 자리만 (충전기 위치 변경 가능, ID로 하드코딩 X)
+	    2) 자리가 비어있어야 함 (s.is_parked = false)
+	    3) 충전기 상태가 STANDBY여야 함 (CHARGING/CHECK/RISK/FAULT/POWER_OFF 제외)
+	  정렬:
+	    1순위: 같은 층 우선 (1F → 2F → 3F → 4F → 5F)
+	    2순위: 같은 층 안에서 (1, 1) 입구 기준 맨해튼 거리 최단
+	-->
 	<select id="findNearestAvailableEvSpot" resultType="com.mbc.fin1.dto.ParkingSpotDto">
         SELECT
             s.parking_spot_id AS spotId,
@@ -14,6 +23,7 @@
         FROM parking_spot s
         JOIN ev_charger e ON s.parking_spot_id = e.parking_spot_id
         WHERE s.is_parked = false
+          AND e.charger_status = 'STANDBY'
         ORDER BY
             s.parking_floor ASC,
             (ABS(s.parking_row - 1) + ABS(s.parking_column - 1)) ASC,

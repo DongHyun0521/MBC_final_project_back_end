@@ -94,6 +94,28 @@ public class ParkingLogService {
             return existing;
         }
 
+        // 주차 자리 조회 (한국 전기차면 충전기 있는 자리, 아니면 일반 자리)
+        // 1층부터 채우고, 같은 층 내에서는 맨해튼 거리 최단 자리 우선
+        ParkingSpotDto spot;
+        boolean isKoreanEv = "KOR".equals(log.getLicensePlateCountry())
+                          && Boolean.TRUE.equals(log.getIsEvLicensePlate());
+
+        if (isKoreanEv) {
+            spot = parkingSpotDao.findNearestAvailableEvSpot();
+            // 전기차 충전기 자리가 모두 찼을 경우 → 일반 자리로 폴백
+            if (spot == null) {
+                spot = parkingSpotDao.findNearestAvailableSpot();
+            }
+        } else {
+            spot = parkingSpotDao.findNearestAvailableSpot();
+        }
+
+        // 만차 → 이미지 저장 안 함, DB 저장 안 함, 차단기 안 열림
+        if (spot == null) {
+            log.setParkingStatus("FULL");
+            return log;
+        }
+
         // ── 여기까지 통과해야만 이미지 저장 ──
         java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "vehicle"));
         java.nio.file.Files.createDirectories(java.nio.file.Paths.get(uploadDir, "plates"));
@@ -119,27 +141,14 @@ public class ParkingLogService {
         // DB에 저장된 값으로 재조회
         ParkingLogDto saved = parkingLogDao.findById(log.getParkingLogId().intValue());
 
-        // 주차 자리 추천 (한국 전기차면 충전기 있는 자리, 아니면 일반 자리)
-        ParkingSpotDto spot;
-        boolean isKoreanEv = "KOR".equals(log.getLicensePlateCountry())
-                          && Boolean.TRUE.equals(log.getIsEvLicensePlate());
+        // 자리 점유 처리: is_parked = true, parking_log_id 매핑
+        parkingSpotDao.allocateSpot(spot.getSpotId(), saved.getParkingLogId());
 
-        if (isKoreanEv) {
-            spot = parkingSpotDao.findNearestAvailableEvSpot();
-            // 전기차 충전기 자리가 모두 찼을 경우 → 일반 자리로 폴백
-            if (spot == null) {
-                spot = parkingSpotDao.findNearestAvailableSpot();
-            }
-        } else {
-            spot = parkingSpotDao.findNearestAvailableSpot();
-        }
-
-        if (spot != null) {
-            char rowLetter = (char) ('A' + spot.getParkingRow() - 1);
-            saved.setRecommendedSpot(
-                "지하 " + spot.getParkingFloor() + "층 " + rowLetter + "-" + spot.getParkingColumn()
-            );
-        }
+        // 배정된 자리 정보 raw 데이터로 응답 (다국어 표기는 프론트가 담당)
+        char rowLetter = (char) ('A' + spot.getParkingRow() - 1);
+        saved.setRecommendedFloor(spot.getParkingFloor());
+        saved.setRecommendedRow(String.valueOf(rowLetter));
+        saved.setRecommendedColumn(spot.getParkingColumn());
         return saved;
     }
 
@@ -240,11 +249,14 @@ public class ParkingLogService {
             // 8004 서버 호출
             ResponseEntity<Map> paymentRes = restTemplate.postForEntity(pythonPaymentBaseUrl + "/api/parking-payment/exit", paymentReq, Map.class);
 
+            // 출차/정산 정상 처리 완료 → 주차 자리 해제 (is_parked = false, parking_log_id = NULL)
+            parkingSpotDao.freeSpotByLogId(activeLog.getParkingLogId());
+
             // 최종 데이터 취합 및 나라 정보 병합 후 반환
             Map<String, Object> finalResult = new java.util.HashMap<>(paymentRes.getBody());
             finalResult.put("license_plate_country", country);
             finalResult.put("is_success", true);
-            
+
             finalResult.put("vehicle_img", savedVehicleImg);
             finalResult.put("license_plate_img", savedPlateImg);
             return finalResult;

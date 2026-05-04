@@ -36,7 +36,9 @@ public class ParkingLogDto {
     private LocalDateTime modifyTime;	// 수정 시간
     private Integer del;				// 삭제 여부
     
-    private String recommendedSpot;	// 추천 주차 위치
+    private Integer recommendedFloor;	// 배정된 주차 층 (1~5)
+    private String recommendedRow;		// 배정된 주차 행 (A, B, C, D)
+    private Integer recommendedColumn;	// 배정된 주차 열 (1~10)
     private String parkingStatus;	// 주차 상태
     private String empNumber;		// 관리자 사원번호
     private Long duration;			// 체류 시간(분)
