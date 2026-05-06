@@ -67,18 +67,24 @@
         WHERE parking_log_id = #{parkingLogId}
     </update>
     
-    <!-- 주차 자리 전체 출력하기 -->
+    <!-- 주차 자리 전체 출력하기 (관리자 주차장 맵용 - 차량/회원/충전기 정보 포함) -->
     <select id="findAllSpots" resultType="com.mbc.fin1.dto.ParkingSpotDto">
-        SELECT 
-            s.parking_spot_id AS spotId, 
-            s.parking_log_id AS parkingLogId, 
-            s.parking_floor AS parkingFloor, 
-            s.parking_row AS parkingRow, 
-            s.parking_column AS parkingColumn, 
+        SELECT
+            s.parking_spot_id AS spotId,
+            s.parking_log_id AS parkingLogId,
+            s.parking_floor AS parkingFloor,
+            s.parking_row AS parkingRow,
+            s.parking_column AS parkingColumn,
             s.is_parked AS isParked,
-            l.vehicle_num AS vehicleNum,  l.entry_time AS entryTime     
+            l.vehicle_num AS vehicleNum,
+            l.entry_time AS entryTime,
+            l.license_plate_country AS licensePlateCountry,
+            (mv.vehicle_id IS NOT NULL) AS isMember,
+            (e.ev_charger_id IS NOT NULL) AS hasEvCharger
         FROM parking_spot s
         LEFT JOIN parking_log l ON s.parking_log_id = l.parking_log_id
+        LEFT JOIN member_vehicle mv ON l.vehicle_num = mv.vehicle_num
+        LEFT JOIN ev_charger e ON s.parking_spot_id = e.parking_spot_id
         ORDER BY s.parking_floor ASC, s.parking_row ASC, s.parking_column ASC
     </select>
 

@@ -487,14 +487,6 @@ SELECT * FROM reservation;
 
 SELECT * FROM parking_log;
 
-SELECT s.parking_spot_id AS spot_id,
-       s.parking_floor, s.parking_row, s.parking_column,
-       s.is_parked,
-       e.ev_charger_id, e.charger_status
-FROM ev_charger e
-LEFT JOIN parking_spot s ON e.parking_spot_id = s.parking_spot_id
-ORDER BY e.ev_charger_id;
-
 SELECT * FROM parking_spot;
 SELECT * FROM receipt;
 SELECT * FROM ev_charger;

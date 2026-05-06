@@ -18,4 +18,8 @@ public class ParkingSpotDto {
     
     private String vehicleNum;	// 차량 번호
     private String entryTime;	// 입차 시간
+
+    private String licensePlateCountry;	// 국가 코드 (KOR, BRA, CHN, EUR, IND)
+    private Boolean isMember;			// 회원 여부 (member_vehicle 실시간 JOIN)
+    private Boolean hasEvCharger;		// 전기차 충전기 자리 여부 (D-8/9/10)
 }
